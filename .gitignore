@@ -1,31 +1,48 @@
-# Node
-node_modules/
-npm-debug.log
-yarn-error.log
-.yarn/
-
-# Expo
-.expo/
-.expo-shared/
-dist/
-.env
-.env.local
-
-# OS
+# --- System / IDE ---
 .DS_Store
 Thumbs.db
-
-# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
 
-# Firebase
+# --- Dependencies ---
+# This covers node_modules in the root, frontend, and backend
+**/node_modules/
+npm-debug.log
+yarn-error.log
+.yarn/
+
+# --- Expo / React Native ---
+**/ .expo/
+**/.expo-shared/
+**/web-build/
+**/dist/
+
+# --- Environment & API Keys (CRITICAL) ---
+**/.env
+**/.env.local
+**/.env.development.local
+**/.env.test.local
+**/.env.production.local
+
+# --- Specific Config Files to Hide ---
+# Since you're switching to Supabase, let's hide the old and new configs
+**/firebase.js
+**/supabaseClient.js
+**/config/supabase.js
+**/services/supabase.js
+
+# --- Firebase (Just in case) ---
 .firebaserc
 firebase-debug.log
+**/firestore.indexes.json
+**/firestore.rules
 
-# Build outputs
-build/
+# --- Android/iOS Build Artifacts ---
+**/android/build/
+**/ios/build/
 *.jks
 *.keystore
+*.apk
+*.ipa

@@ -9,6 +9,7 @@ import LoginScreen from './src/screens/LoginScreen';
 import SignUpScreen from './src/screens/SignUpScreen';
 import DecisionScreen from './src/screens/DecisionScreen';
 import GuidedPathScreen from './src/screens/GuidedPathScreen';
+import ResultScreen from './src/screens/ResultScreen';
 
 const Stack = createStackNavigator();
 
@@ -24,6 +25,7 @@ export default function App() {
         <Stack.Screen name="SignUp" component={SignUpScreen} />
         <Stack.Screen name="Decision" component={DecisionScreen} />
         <Stack.Screen name="GuidedPath" component={GuidedPathScreen} />
+        <Stack.Screen name="Result" component={ResultScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -9,25 +9,24 @@ const tree = {
   START: {
     question: "What do you need help with?",
     options: [
-      { label: "🏥 Medical", value: "Medical", next: "MEDICAL_SYMPTOM" },
+      { label: "🏥 Medical", value: "Medical", next: "MEDICAL_TYPE" },
       { label: "📄 Documents", value: "Documents", next: "DOC_TYPE" },
       { label: "⚖️ Complaint", value: "Complaint", next: "COMPLAINT_TYPE" },
     ]
   },
-  MEDICAL_SYMPTOM: {
-    question: "What are you experiencing?",
+  MEDICAL_TYPE: {
+    question: "What kind of medical concern?",
     options: [
-      { label: "💔 Chest pain or difficulty breathing", value: "Chest_Pain", urgency: "High", next: "FINISH" },
-      { label: "🤒 Fever, headache, or body pain", value: "Fever", urgency: "Medium", next: "MEDICAL_FOLLOWUP" },
-      { label: "🩹 Wound or injury", value: "Wound", urgency: "Medium", next: "FINISH" },
-      { label: "💊 Prescription refill / routine check", value: "Routine", urgency: "Low", next: "FINISH" },
+      { label: "🤕 Physical", value: "Physical", next: "MEDICAL_URGENCY" },
+      { label: "🧠 Psychological", value: "Psychological", next: "FINISH" },
+      { label: "🩺 Checkup / routine visit", value: "Checkup", next: "FINISH" },
     ]
   },
-  MEDICAL_FOLLOWUP: {
-    question: "How long have you had these symptoms?",
+  MEDICAL_URGENCY: {
+    question: "How urgent is your physical concern?",
     options: [
-      { label: "Just started — less than a day", value: "Fever_Short", next: "FINISH" },
-      { label: "More than a day", value: "Fever_Long", next: "FINISH" },
+      { label: "🚨 Urgent — needs immediate attention", value: "High", next: "FINISH" },
+      { label: "📋 Routine — can wait for an appointment", value: "Low", next: "FINISH" },
     ]
   },
   DOC_TYPE: {
@@ -62,7 +61,7 @@ const tree = {
   },
   COMPLAINT_INPUT: {
     type: 'text_input',
-    question: "Briefly describe your complaint:",
+    question: "Briefly describe your concern:",
     placeholder: "e.g. There is a broken street light near the covered court...",
     next: "FINISH",
   },
@@ -82,17 +81,10 @@ export default function GuidedPathScreen({ navigation }) {
   const handleSelection = (option) => {
     const updated = { ...selections };
 
-    if (currentStep === 'START') updated.category = option.value;
-
-    if (currentStep === 'MEDICAL_SYMPTOM') {
-      updated.subType = option.value;
-      if (option.urgency) updated.urgency = option.urgency;
-    }
-
-    // MEDICAL_FOLLOWUP overrides subType to Fever_Short or Fever_Long
-    if (currentStep === 'MEDICAL_FOLLOWUP') updated.subType = option.value;
-
-    if (currentStep === 'DOC_TYPE') updated.subType = option.value;
+    if (currentStep === 'START')            updated.category = option.value;
+    if (currentStep === 'MEDICAL_TYPE')     updated.subType = option.value;
+    if (currentStep === 'MEDICAL_URGENCY')  updated.urgency = option.value;
+    if (currentStep === 'DOC_TYPE')         updated.subType = option.value;
 
     if (currentStep === 'COMPLAINT_TYPE') {
       updated.subType = option.value;

@@ -1,12 +1,16 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, SafeAreaView } from 'react-native';
 
 export default function SplashScreen({ navigation }) {
   useEffect(() => {
-    setTimeout(() => {
+
+
+    const timer = setTimeout(() => {
       navigation.replace('Login');
     }, 2000);
-  }, []);
+
+    return () => clearTimeout(timer);
+  }, [navigation]);
 
   return (
     <View style={styles.container}>

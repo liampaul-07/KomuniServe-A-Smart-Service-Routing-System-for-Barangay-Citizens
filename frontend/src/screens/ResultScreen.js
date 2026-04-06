@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Platform, StatusBar } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, Platform, StatusBar, Alert } from 'react-native';
 
 const PRIORITY_CONFIG = {
   HIGH:   { color: '#D32F2F', bg: '#FFEBEE', label: '🚨 High Priority' },
@@ -8,9 +8,9 @@ const PRIORITY_CONFIG = {
 };
 
 const ACTION_LABELS = {
-  SCHEDULE:             'Book an Appointment',
-  WALK_IN:              'Proceed to Barangay Hall',
-  PREPARE_REQUIREMENTS: 'Prepare Requirements First',
+  SCHEDULE:      'Book an Appointment',
+  WALK_IN:       'Proceed to Barangay Hall',
+  SUBMIT_REPORT: 'Submit Report',
 };
 
 export default function ResultScreen({ route, navigation }) {
@@ -18,10 +18,18 @@ export default function ResultScreen({ route, navigation }) {
   const config = PRIORITY_CONFIG[result.priority];
 
   const handleAction = () => {
-    if (result.requiresAppointment) {
-      // Later: navigate to appointment booking screen
+    if (result.action === 'SCHEDULE') {
+      // TODO: navigate to BookAppointment screen when built
       // navigation.navigate('BookAppointment', { category, result });
       console.log('Navigate to booking — not built yet');
+    } else if (result.action === 'SUBMIT_REPORT') {
+      // TODO: save report to Supabase when connected
+      // await supabase.from('requests').insert({ ... });
+      Alert.alert(
+        'Report Submitted',
+        'Your report has been logged. Barangay staff will be notified.',
+        [{ text: 'OK', onPress: () => navigation.navigate('Decision') }]
+      );
     } else {
       navigation.navigate('Decision');
     }
@@ -37,24 +45,27 @@ export default function ResultScreen({ route, navigation }) {
 
       <View style={styles.content}>
 
-        {/* Category Title */}
         <Text style={styles.categoryLabel}>{category}</Text>
         <Text style={styles.title}>Service Assessment</Text>
 
-        {/* Priority Badge */}
         <View style={[styles.priorityBadge, { backgroundColor: config.bg }]}>
           <Text style={[styles.priorityText, { color: config.color }]}>
             {config.label}
           </Text>
         </View>
 
-        {/* Instructions Card */}
+        {/* Facility */}
+        <View style={styles.facilityRow}>
+          <Text style={styles.facilityIcon}>📍</Text>
+          <Text style={styles.facilityText}>{result.facility}</Text>
+        </View>
+
+        {/* Instructions */}
         <View style={styles.instructionsCard}>
           <Text style={styles.instructionsHeading}>What to do:</Text>
           <Text style={styles.instructionsText}>{result.instructions}</Text>
         </View>
 
-        {/* Action Button */}
         <TouchableOpacity
           style={[styles.actionBtn, { backgroundColor: config.color }]}
           onPress={handleAction}
@@ -64,7 +75,6 @@ export default function ResultScreen({ route, navigation }) {
           </Text>
         </TouchableOpacity>
 
-        {/* Secondary: Start Over */}
         <TouchableOpacity
           style={styles.secondaryBtn}
           onPress={() => navigation.navigate('GuidedPath')}
@@ -94,9 +104,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    marginBottom: 24,
+    marginBottom: 16,
   },
   priorityText: { fontWeight: 'bold', fontSize: 15 },
+  facilityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+    gap: 8,
+  },
+  facilityIcon: { fontSize: 16 },
+  facilityText: { fontSize: 15, color: '#555', fontWeight: '600' },
   instructionsCard: {
     backgroundColor: '#F8F9FF',
     borderRadius: 16,
@@ -107,12 +125,7 @@ const styles = StyleSheet.create({
   },
   instructionsHeading: { fontSize: 13, fontWeight: 'bold', color: '#999', marginBottom: 8, textTransform: 'uppercase' },
   instructionsText: { fontSize: 17, color: '#333', lineHeight: 26 },
-  actionBtn: {
-    padding: 18,
-    borderRadius: 14,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
+  actionBtn: { padding: 18, borderRadius: 14, alignItems: 'center', marginBottom: 12 },
   actionBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 17 },
   secondaryBtn: { alignItems: 'center', padding: 12 },
   secondaryBtnText: { color: '#999', fontSize: 15 },

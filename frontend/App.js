@@ -9,6 +9,7 @@ import SignUpScreen from './src/screens/SignUpScreen';
 import DecisionScreen from './src/screens/DecisionScreen';
 import GuidedPathScreen from './src/screens/GuidedPathScreen';
 import ResultScreen from './src/screens/ResultScreen';
+import SearchScreen from './src/screens/SearchScreen';
 
 import AdminDashboardScreen from './src/screens/AdminDashboardScreen';
 import RequestDetailScreen from './src/screens/RequestDetailScreen';
@@ -35,6 +36,7 @@ export default function App() {
         {/* Admin */}
         <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
         <Stack.Screen name="RequestDetail" component={RequestDetailScreen} />
+        <Stack.Screen name="Search" component={SearchScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

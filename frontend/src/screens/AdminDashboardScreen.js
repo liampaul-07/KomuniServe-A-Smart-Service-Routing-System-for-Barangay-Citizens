@@ -1,27 +1,28 @@
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
-  FlatList, SectionList, ScrollView, Platform, StatusBar, Alert
+  FlatList, ScrollView, Platform, StatusBar, Alert
 } from 'react-native';
 
 // ─── MOCK DATA ───────────────────────────────────────────────
 // TODO: Replace with → supabase.from('requests').select('*, users(name)')
 const MOCK_REQUESTS = [
-  { id: '1', userName: 'Juan Dela Cruz',  category: 'Medical',   subType: 'Physical',               priority: 'HIGH',   status: 'Pending',  facility: 'Barangay Health Center',                action: 'WALK_IN',       description: '',                                            timestamp: '2026-04-06T08:00:00.000Z' },
-  { id: '2', userName: 'Maria Santos',    category: 'Documents', subType: 'Clearance',              priority: 'LOW',    status: 'Pending',  facility: 'Barangay Hall — Records Office',         action: 'SCHEDULE',      description: '',                                            timestamp: '2026-04-06T09:00:00.000Z' },
+  { id: '1', userName: 'Juan Dela Cruz',  category: 'Medical',   subType: 'Physical',               priority: 'HIGH',   status: 'Pending',  facility: 'Barangay Health Center',                action: 'WALK_IN',       description: '',                                                timestamp: '2026-04-06T08:00:00.000Z' },
+  { id: '2', userName: 'Maria Santos',    category: 'Documents', subType: 'Clearance',              priority: 'LOW',    status: 'Pending',  facility: 'Barangay Hall — Records Office',         action: 'SCHEDULE',      description: '',                                                timestamp: '2026-04-06T09:00:00.000Z' },
   { id: '3', userName: 'Pedro Reyes',     category: 'Complaint', subType: 'Noise',                  priority: 'MEDIUM', status: 'Approved', facility: 'Barangay Hall — Lupon Tagapamayapa',    action: 'SCHEDULE',      description: 'Loud music from neighboring house past midnight.', timestamp: '2026-04-05T14:00:00.000Z' },
-  { id: '4', userName: 'Ana Gonzales',    category: 'Medical',   subType: 'Checkup',                priority: 'LOW',    status: 'Approved', facility: 'Barangay Health Center',                action: 'SCHEDULE',      description: '',                                            timestamp: '2026-04-05T10:00:00.000Z' },
-  { id: '5', userName: 'Rico Manalo',     category: 'Complaint', subType: 'Broken_Electrical_Wire', priority: 'HIGH',   status: 'Rejected', facility: 'Barangay Hall — Infrastructure Office',  action: 'SUBMIT_REPORT', description: 'Exposed wire near the basketball court.',     timestamp: '2026-04-04T16:00:00.000Z' },
-  { id: '6', userName: 'Lita Cruz',       category: 'Documents', subType: 'Indigency',              priority: 'LOW',    status: 'Rejected', facility: 'Barangay Hall — Records Office',         action: 'SCHEDULE',      description: '',                                            timestamp: '2026-04-04T11:00:00.000Z' },
+  { id: '4', userName: 'Ana Gonzales',    category: 'Medical',   subType: 'Checkup',                priority: 'LOW',    status: 'Approved', facility: 'Barangay Health Center',                action: 'SCHEDULE',      description: '',                                                timestamp: '2026-04-05T10:00:00.000Z' },
+  { id: '5', userName: 'Rico Manalo',     category: 'Complaint', subType: 'Broken_Electrical_Wire', priority: 'HIGH',   status: 'Rejected', facility: 'Barangay Hall — Infrastructure Office',  action: 'SUBMIT_REPORT', description: 'Exposed wire near the basketball court.',         timestamp: '2026-04-04T16:00:00.000Z' },
+  { id: '6', userName: 'Lita Cruz',       category: 'Documents', subType: 'Indigency',              priority: 'LOW',    status: 'Rejected', facility: 'Barangay Hall — Records Office',         action: 'SCHEDULE',      description: '',                                                timestamp: '2026-04-04T11:00:00.000Z' },
 ];
 
 // ─── SLOT HELPERS ────────────────────────────────────────────
+// TODO: Replace with → supabase.from('time_slots').select('*').eq('slot_date', dateKey(selectedDate))
 const DEFAULT_TIMES = [
   '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM',
   '1:00 PM', '2:00 PM', '3:00 PM',  '4:00 PM',
 ];
 
-function generateWeekDates() {
+const WEEK_DATES = (() => {
   const dates = [];
   const today = new Date();
   for (let i = 0; i < 14; i++) {
@@ -30,22 +31,17 @@ function generateWeekDates() {
     dates.push(d);
   }
   return dates;
-}
+})();
 
 function formatDayLabel(date) {
   return date.toLocaleDateString('en-PH', { weekday: 'short' });
 }
-
 function formatDayNumber(date) {
   return date.getDate().toString();
 }
-
 function formatFullDate(date) {
-  return date.toLocaleDateString('en-PH', {
-    weekday: 'long', month: 'long', day: 'numeric',
-  });
+  return date.toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric' });
 }
-
 function dateKey(date) {
   return date.toISOString().split('T')[0];
 }
@@ -172,27 +168,17 @@ function RequestsTab({ navigation }) {
 }
 
 // ─── SLOTS TAB ───────────────────────────────────────────────
-const WEEK_DATES = generateWeekDates();
-
 function SlotsTab() {
   const [selectedDate, setSelectedDate] = useState(WEEK_DATES[0]);
+  const [slotData,     setSlotData]     = useState({});
 
-  // slotData shape: { [dateKey]: { [time]: boolean } }
-  // Starts empty — admin explicitly opens slots per specific date
-  // TODO: on selectedDate change, fetch from:
-  // supabase.from('time_slots').select('*').eq('slot_date', dateKey(selectedDate))
-  // Then hydrate slotData[key] from results
-  const [slotData, setSlotData] = useState({});
-
-  const key       = dateKey(selectedDate);
+  const key        = dateKey(selectedDate);
   const todaySlots = slotData[key] ?? {};
   const openCount  = Object.values(todaySlots).filter(Boolean).length;
 
   const toggleSlot = (time) => {
-    // TODO: Replace local state update with Supabase upsert:
-    // await supabase.from('time_slots').upsert({
-    //   slot_date:    key,
-    //   slot_time:    time,
+    // TODO: await supabase.from('time_slots').upsert({
+    //   slot_date: key, slot_time: time,
     //   is_available: !(todaySlots[time] ?? false),
     // }, { onConflict: 'slot_date,slot_time' });
     setSlotData(prev => ({
@@ -206,7 +192,6 @@ function SlotsTab() {
 
   return (
     <View style={{ flex: 1 }}>
-
       {/* 14-day date strip */}
       <View style={slotStyles.dateStripWrapper}>
         <ScrollView
@@ -250,7 +235,7 @@ function SlotsTab() {
       {/* Slot list */}
       <ScrollView contentContainerStyle={slotStyles.slotList}>
         {DEFAULT_TIMES.map(time => {
-          const isOpen = todaySlots[time] ?? false; //
+          const isOpen = todaySlots[time] ?? false;
           return (
             <View key={time} style={slotStyles.slotRow}>
               <View style={slotStyles.slotLeft}>
@@ -270,7 +255,6 @@ function SlotsTab() {
           );
         })}
       </ScrollView>
-
     </View>
   );
 }
@@ -332,11 +316,26 @@ export default function AdminDashboardScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
+
+      {/* Top header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>{TAB_TITLES[activeTab]}</Text>
-        <Text style={styles.headerSub}>KomuniServe Admin</Text>
+        <View>
+          <Text style={styles.headerTitle}>{TAB_TITLES[activeTab]}</Text>
+          <Text style={styles.headerSub}>KomuniServe Admin</Text>
+        </View>
+        {/* Search icon — only visible on Requests tab */}
+        {activeTab === 'Requests' && (
+          <TouchableOpacity
+            style={styles.searchIconBtn}
+            onPress={() => navigation.navigate('Search', { requests: MOCK_REQUESTS })}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.searchIconText}>🔍</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
+      {/* Tab content */}
       <View style={{ flex: 1 }}>
         {activeTab === 'Requests' && <RequestsTab navigation={navigation} />}
         {activeTab === 'Slots'    && <SlotsTab />}
@@ -360,6 +359,7 @@ export default function AdminDashboardScreen({ navigation }) {
           </TouchableOpacity>
         ))}
       </View>
+
     </SafeAreaView>
   );
 }
@@ -368,7 +368,11 @@ export default function AdminDashboardScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F6FA' },
 
+  // Header
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 12 : 12,
     paddingBottom: 14,
@@ -376,6 +380,14 @@ const styles = StyleSheet.create({
   },
   headerTitle: { color: '#FFF', fontSize: 22, fontWeight: 'bold' },
   headerSub:   { color: '#BDD4FF', fontSize: 12, marginTop: 1 },
+
+  // Search icon button (top right)
+  searchIconBtn: {
+    padding: 8,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 20,
+  },
+  searchIconText: { fontSize: 18 },
 
   // Category bar
   categoryBar:     { backgroundColor: '#FFF', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
@@ -401,13 +413,12 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 3,
   },
-  segment:          { flex: 1, paddingVertical: 7, borderRadius: 8, alignItems: 'center' },
-  segmentActive:    { backgroundColor: '#FFF', elevation: 1 },
-  segmentText:      { fontSize: 13, color: '#888', fontWeight: '500' },
-  segmentTextActive:{ color: '#0047AB', fontWeight: '700' },
+  segment:           { flex: 1, paddingVertical: 7, borderRadius: 8, alignItems: 'center' },
+  segmentActive:     { backgroundColor: '#FFF', elevation: 1 },
+  segmentText:       { fontSize: 13, color: '#888', fontWeight: '500' },
+  segmentTextActive: { color: '#0047AB', fontWeight: '700' },
 
-  countText: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 2, color: '#AAA', fontSize: 12 },
-
+  countText:   { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 2, color: '#AAA', fontSize: 12 },
   listContent: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 24 },
 
   // Card
@@ -429,10 +440,9 @@ const styles = StyleSheet.create({
   cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
   cardTime:   { fontSize: 12, color: '#BBB' },
 
-  statusBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, gap: 5 },
-  statusDot:   { width: 6, height: 6, borderRadius: 3 },
-  statusText:  { fontSize: 12, fontWeight: '700' },
-
+  statusBadge:   { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, gap: 5 },
+  statusDot:     { width: 6, height: 6, borderRadius: 3 },
+  statusText:    { fontSize: 12, fontWeight: '700' },
   priorityBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
   priorityText:  { fontSize: 12, fontWeight: '700' },
 
@@ -467,7 +477,7 @@ const styles = StyleSheet.create({
   },
   accountItemLabel: { fontSize: 15, color: '#444' },
   accountItemValue: { fontSize: 15, color: '#888' },
-  logoutBtn: { backgroundColor: '#FFEBEE', padding: 16, borderRadius: 14, alignItems: 'center' },
+  logoutBtn:     { backgroundColor: '#FFEBEE', padding: 16, borderRadius: 14, alignItems: 'center' },
   logoutBtnText: { color: '#C62828', fontWeight: 'bold', fontSize: 16 },
 
   // Bottom bar
@@ -479,11 +489,11 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 20 : 8,
     elevation: 8,
   },
-  bottomTab:           { flex: 1, alignItems: 'center', paddingTop: 10, paddingBottom: 4, position: 'relative' },
-  bottomTabIcon:       { fontSize: 20 },
-  bottomTabLabel:      { fontSize: 11, color: '#AAA', marginTop: 3, fontWeight: '500' },
-  bottomTabLabelActive:{ color: '#0047AB', fontWeight: '700' },
-  bottomTabIndicator:  {
+  bottomTab:            { flex: 1, alignItems: 'center', paddingTop: 10, paddingBottom: 4, position: 'relative' },
+  bottomTabIcon:        { fontSize: 20 },
+  bottomTabLabel:       { fontSize: 11, color: '#AAA', marginTop: 3, fontWeight: '500' },
+  bottomTabLabelActive: { color: '#0047AB', fontWeight: '700' },
+  bottomTabIndicator:   {
     position: 'absolute', top: 0, width: 32, height: 3,
     backgroundColor: '#0047AB', borderBottomLeftRadius: 3, borderBottomRightRadius: 3,
   },

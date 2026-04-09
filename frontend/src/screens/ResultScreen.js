@@ -91,18 +91,27 @@ export default function ResultScreen({ route, navigation }) {
 
   const handleAction = () => {
     if (result.action === 'SCHEDULE') {
-      // TODO: navigate to BookAppointment screen when built
-      // navigation.navigate('BookAppointment', { category, result });
-      console.log('Navigate to booking — not built yet');
+      navigation.navigate('BookAppointment', { result, category });
+
     } else if (result.action === 'SUBMIT_REPORT') {
-      // TODO: save report to Supabase when connected
-      // await supabase.from('requests').insert({ ... });
+      // TODO: Save report to Supabase before showing confirmation:
+      // await supabase.from('requests').insert({
+      //   user_id:           currentUser.id,
+      //   service_requested: category,
+      //   priority:          result.priority,
+      //   intake_answers:    result,
+      //   status:            'Pending',
+      //   description:       result.instructions,
+      //   submitted_at:      new Date().toISOString(),
+      // });
       Alert.alert(
         'Report Submitted',
         'Your report has been logged. Barangay staff will be notified.',
         [{ text: 'OK', onPress: () => navigation.navigate('Decision') }]
       );
+
     } else {
+      // WALK_IN — no booking needed, just go back to hub
       navigation.navigate('Decision');
     }
   };
@@ -175,7 +184,7 @@ export default function ResultScreen({ route, navigation }) {
           <ChevronRight size={18} color="#FFFFFF" strokeWidth={2.5} />
         </TouchableOpacity>
 
-        {/* Secondary button */}
+        {/* Start over */}
         <TouchableOpacity
           style={styles.secondaryBtn}
           onPress={() => navigation.navigate('GuidedPath')}

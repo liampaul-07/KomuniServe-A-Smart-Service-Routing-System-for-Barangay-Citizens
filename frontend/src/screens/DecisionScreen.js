@@ -14,6 +14,7 @@ import {
 export default function DecisionScreen({ navigation }) {
 
   const handleLogout = () => {
+    // TODO: await supabase.auth.signOut();
     navigation.replace('Login');
   };
 
@@ -80,10 +81,12 @@ export default function DecisionScreen({ navigation }) {
           </View>
         </TouchableOpacity>
 
+        {/* Direct access */}
+        {/* TODO: navigate to DirectAccess screen when built */}
         {/* ── Option 2: Direct Access — gold 4px accent on card ── */}
         <TouchableOpacity
           style={styles.cardOutline}
-          onPress={() => Alert.alert('Coming Soon', 'Direct access to service listings is being finalized.')}
+          onPress={() => navigation.navigate('DirectAccess')}
           activeOpacity={0.85}
         >
        

@@ -351,7 +351,7 @@ function SlotsTab() {
       {/* Slot list */}
       <ScrollView contentContainerStyle={slotStyles.slotList}>
         {DEFAULT_TIMES.map(time => {
-          const isOpen = todaySlots[time] ?? false;
+          const isOpen = todaySlots[time] ?? true;
           const period = time.includes('AM') ? 'AM' : 'PM';
           const timeNum = time.replace(' AM','').replace(' PM','');
           return (

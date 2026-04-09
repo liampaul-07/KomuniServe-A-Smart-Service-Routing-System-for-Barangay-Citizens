@@ -58,13 +58,12 @@ export default function DecisionScreen({ navigation }) {
 
         <View style={styles.divider} />
 
-        {/* ── Option 1: Guided Intake — gold 4px accent on card ── */}
+        {/* Guided Intake */}
         <TouchableOpacity
           style={styles.cardPrimary}
           onPress={() => navigation.navigate('GuidedPath')}
           activeOpacity={0.85}
         >
-      
           <View style={styles.cardInner}>
             {/* ✅ Lucide icon — no placeholder 'G' text */}
             <View style={styles.cardIconBox}>
@@ -82,14 +81,11 @@ export default function DecisionScreen({ navigation }) {
         </TouchableOpacity>
 
         {/* Direct access */}
-        {/* TODO: navigate to DirectAccess screen when built */}
-        {/* ── Option 2: Direct Access — gold 4px accent on card ── */}
         <TouchableOpacity
           style={styles.cardOutline}
           onPress={() => navigation.navigate('DirectAccess')}
           activeOpacity={0.85}
         >
-       
           <View style={styles.cardInner}>
             {/* ✅ Lucide icon — no placeholder 'D' text */}
             <View style={styles.cardIconBoxOutline}>
@@ -97,9 +93,6 @@ export default function DecisionScreen({ navigation }) {
             </View>
             <View style={styles.cardTextBlock}>
               <Text style={styles.cardTitleDark}>Direct Access</Text>
-              <View style={styles.comingSoonBadge}>
-                <Text style={styles.comingSoonText}>COMING SOON</Text>
-              </View>
               <Text style={styles.cardSubDark}>
                 If you already know exactly what document or service you need.
               </Text>
@@ -107,6 +100,28 @@ export default function DecisionScreen({ navigation }) {
             <ChevronRight size={18} color="#C5D0E8" strokeWidth={2} />
           </View>
         </TouchableOpacity>
+
+        {/* My Appointments */}
+        <TouchableOpacity
+          style={styles.cardOutline}
+          onPress={() => navigation.navigate('AppointmentStatus')}
+          activeOpacity={0.85}
+        >
+          <View style={styles.cardInner}>
+            {/* ✅ Lucide icon — no placeholder 'D' text */}
+            <View style={styles.cardIconBoxOutline}>
+              <LayoutGrid size={22} color="#0038A8" strokeWidth={1.8} />
+            </View>
+            <View style={styles.cardTextBlock}>
+              <Text style={styles.cardTitleDark}>My Appointments</Text>
+              <Text style={styles.cardSubDark}>
+                Check the status of your submitted appointments and requests.
+              </Text>
+            </View>
+            <ChevronRight size={18} color="#C5D0E8" strokeWidth={2} />
+          </View>
+        </TouchableOpacity>
+
 
         {/* ── Footer ── */}
         <View style={styles.footer}>

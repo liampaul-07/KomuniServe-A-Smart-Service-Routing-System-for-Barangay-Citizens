@@ -37,22 +37,17 @@ export default function SignUpScreen({ navigation }) {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+            role: 'resident',
+            is_active: true,
+          }
+        }
       });
       
       if (error) throw error;
-
-      const { error: profileError } = await supabase
-      .from('users')
-      .upset({
-        id: data.user.id,
-        first_name: firstName,
-        last_name: lastName,
-        email: email,
-        role: 'resident',
-        is_active: true,
-      }, { onConflict: 'id' });
-
-      if (profileError) throw profileError;
 
       Alert.alert(
         'Account Created', 

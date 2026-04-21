@@ -177,7 +177,7 @@ export default function BookAppointmentScreen({ route, navigation }) {
           priority: result.priority,
           intake_answers: result,
           status: 'Pending',
-          description: result.intake_answers.description ?? '',
+          description: result.intake_answers?.description ?? '',
           submitted_at: new Date().toISOString(),
         })
         .select()

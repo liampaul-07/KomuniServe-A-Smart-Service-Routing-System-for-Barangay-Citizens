@@ -49,6 +49,24 @@ export default function SignUpScreen({ navigation }) {
       
       if (error) throw error;
 
+      if (data?.user) {
+        // Standard insertion/upsert into the public users table
+        const { error: profileError } = await supabase
+          .from('users')
+          .upsert({
+            id: data.user.id,
+            first_name: firstName,
+            last_name: lastName,
+            email: email,
+            role: 'resident',
+            is_active: true,
+          });
+
+        if (profileError) {
+          console.log('Profile creation error:', profileError.message);
+        }
+      }
+
       Alert.alert(
         'Account Created', 
         'Your account has been created. You can now log in.', 

@@ -15,7 +15,7 @@ import AppointmentStatusScreen  from './src/screens/AppointmentStatusScreen';
 import DirectAccessScreen       from './src/screens/DirectAccessScreen';
 import ServiceDetailScreen      from './src/screens/ServiceDetailScreen';
 import AdminDashboardScreen     from './src/screens/AdminDashboardScreen';
-import RequestDetailScreen      from './src/screens/RequestDetailScreen';
+// import RequestDetailScreen      from './src/screens/RequestDetailScreen';
 import SearchScreen             from './src/screens/SearchScreen';
 
 const Stack = createStackNavigator();
@@ -27,12 +27,9 @@ export default function App() {
         initialRouteName="Splash"
         screenOptions={{ headerShown: false }}
       >
-        {/* Auth */}
-        <Stack.Screen name="Splash"  component={SplashScreen}  />
+        <Stack.Screen name="Splash"  component={SplashScreen}  /> 
         <Stack.Screen name="Login"   component={LoginScreen}   />
         <Stack.Screen name="SignUp"  component={SignUpScreen}  />
-
-        {/* Resident */}
         <Stack.Screen name="Decision"           component={DecisionScreen}          />
         <Stack.Screen name="GuidedPath"         component={GuidedPathScreen}        />
         <Stack.Screen name="Result"             component={ResultScreen}            />
@@ -41,11 +38,9 @@ export default function App() {
         <Stack.Screen name="AppointmentStatus"  component={AppointmentStatusScreen} />
         <Stack.Screen name="DirectAccess"       component={DirectAccessScreen}      />
         <Stack.Screen name="ServiceDetail"      component={ServiceDetailScreen}     />
-
-        {/* Admin */}
         <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
-        <Stack.Screen name="RequestDetail"  component={RequestDetailScreen}  />
-        <Stack.Screen name="Search"         component={SearchScreen}         />
+        {/* <Stack.Screen name="RequestDetail"  component={RequestDetailScreen}  /> */}
+        <Stack.Screen name="Search"         component={SearchScreen}         /> 
       </Stack.Navigator>
     </NavigationContainer>
   );

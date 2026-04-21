@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
+
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   Alert, SafeAreaView, KeyboardAvoidingView, ScrollView,
   Platform, StatusBar, Animated, LayoutAnimation,
   UIManager, Image,
 } from 'react-native';
+
 import Svg, { Path } from 'react-native-svg';
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react-native';
+
+import { supabase } from '../services/supabase';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -100,24 +104,42 @@ export default function LoginScreen({ navigation }) {
 
   const handleLogin = () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please enter both email and password.');
+      Alert.alert('Input Required', 'Please enter your email and password.');
       return;
     }
 
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setIsLoading(true);
 
-    // Simulated Auth Logic
-    setTimeout(() => {
-      if (email === 'admin@komuniserve.com' && password === 'admin123') {
-        navigation.replace('AdminDashboard');
-      } else if (email === '123@gmail.com' && password === '123') {
-        navigation.replace('Decision');
-      } else {
-        Alert.alert('Login Failed', 'Invalid email or password.');
+    setTimeout(async () => {
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({ 
+          email, 
+          password 
+        });
+
+        if (error) throw error;
+
+        const { data: profile, error: profileError } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', data.user.id)
+          .single();
+        
+        if (profileError) throw profileError;
+      
+        if (profile.role === 'barangay_staff') {
+          navigation.replace('AdminDashboard');
+        } else {
+          navigation.replace('Decision');
+        }
+      } catch (error) {
+        console.log('Login error:', error.message);
+        Alert.alert('Login Failed','An unexpected error occurred. Please try again.');
+      } finally {
         setIsLoading(false);
-      }
-    }, 1500);
+      } 
+    }, 500);
   };
 
   return (

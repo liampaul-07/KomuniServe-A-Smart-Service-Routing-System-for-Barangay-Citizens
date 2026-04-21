@@ -10,16 +10,7 @@ import {
   CheckCircle2, Clock4, XCircle, AlertTriangle, Zap,
 } from 'lucide-react-native';
 
-// ─── MOCK DATA ───────────────────────────────────────────────
-// TODO: Replace with → supabase.from('requests').select('*, users(name)')
-const MOCK_REQUESTS = [
-  { id: '1', userName: 'Juan Dela Cruz',  category: 'Medical',   subType: 'Physical',               priority: 'HIGH',   status: 'Pending',  facility: 'Barangay Health Center',                action: 'WALK_IN',       description: '',                                                timestamp: '2026-04-06T08:00:00.000Z' },
-  { id: '2', userName: 'Maria Santos',    category: 'Documents', subType: 'Clearance',              priority: 'LOW',    status: 'Pending',  facility: 'Barangay Hall — Records Office',         action: 'SCHEDULE',      description: '',                                                timestamp: '2026-04-06T09:00:00.000Z' },
-  { id: '3', userName: 'Pedro Reyes',     category: 'Complaint', subType: 'Noise',                  priority: 'MEDIUM', status: 'Approved', facility: 'Barangay Hall — Lupon Tagapamayapa',    action: 'SCHEDULE',      description: 'Loud music from neighboring house past midnight.', timestamp: '2026-04-05T14:00:00.000Z' },
-  { id: '4', userName: 'Ana Gonzales',    category: 'Medical',   subType: 'Checkup',                priority: 'LOW',    status: 'Approved', facility: 'Barangay Health Center',                action: 'SCHEDULE',      description: '',                                                timestamp: '2026-04-05T10:00:00.000Z' },
-  { id: '5', userName: 'Rico Manalo',     category: 'Complaint', subType: 'Broken_Electrical_Wire', priority: 'HIGH',   status: 'Rejected', facility: 'Barangay Hall — Infrastructure Office',  action: 'SUBMIT_REPORT', description: 'Exposed wire near the basketball court.',         timestamp: '2026-04-04T16:00:00.000Z' },
-  { id: '6', userName: 'Lita Cruz',       category: 'Documents', subType: 'Indigency',              priority: 'LOW',    status: 'Rejected', facility: 'Barangay Hall — Records Office',         action: 'SCHEDULE',      description: '',                                                timestamp: '2026-04-04T11:00:00.000Z' },
-];
+import { supabase } from '../services/supabase';
 
 // ─── SLOT HELPERS ────────────────────────────────────────────
 // TODO: Replace with → supabase.from('time_slots').select('*').eq('slot_date', dateKey(selectedDate))
@@ -50,6 +41,23 @@ function formatFullDate(date) {
 }
 function dateKey(date) {
   return date.toISOString().split('T')[0];
+}
+
+function formatTimeForDisplay(dbTime) {
+  const [hourStr, minuteStr] = dbTime.split(':');
+  const hour = parseInt(hourStr);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+  return `${displayHour}:${minuteStr} ${ampm}`;
+}
+
+function formatTimeForDB(displayTime) {
+  const [time, ampm] = displayTime.split(' ');
+  const [hourStr, minuteStr] = time.split(':');
+  let hour = parseInt(hourStr);
+  if (ampm === 'PM' && hour !== 12) hour += 12;
+  if (ampm === 'AM' && hour === 12) hour = 0;
+  return `${String(hour).padStart(2, '0')}:${minuteStr}:00`;
 }
 
 // ─── CONFIG ──────────────────────────────────────────────────
@@ -149,8 +157,59 @@ function HeaderLogo() {
 function RequestsTab({ navigation }) {
   const [category, setCategory] = useState('All');
   const [status,   setStatus]   = useState('All');
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = MOCK_REQUESTS.filter(r =>
+  useEffect(() => {
+    fetchRequests();
+  }, []);
+
+  const fetchRequests = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('requests')
+        .select(`
+          id,
+          category,
+          service_requested,
+          priority,
+          status,
+          description,
+          submitted_at,
+          user_id,
+          users(
+          first_name,
+          last_name
+          )
+        `)
+        .order('submitted_at', { ascending: false });
+      
+      if (error) throw error;
+
+      const formatted = data.map(r => ({
+        id: r.id.toString(),
+        userName: r.users ? `${r.users.first_name} ${r.users.last_name}` : 'Unknown',
+        category: r.category ?? '',
+        subType: r.service_requested ?? '',
+        priority: r.priority ?? 'LOW',
+        status: r.status ?? 'Pending',
+        description: r.description ?? '',
+        timestamp: r.submitted_at,
+        facility: '',
+        action: 'SCHEDULE',
+      }));
+
+      setRequests(formatted);
+    } catch (error) {
+      console.log('Error fetching requests:', error.message);
+      Alert.alert('Error', 'Failed to load requests. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filtered = requests.filter(r =>
     (category === 'All' || r.category === category) &&
     (status   === 'All' || r.status   === status)
   );
@@ -168,8 +227,8 @@ function RequestsTab({ navigation }) {
   }
 
   const renderCard = ({ item }) => {
-    const p = PRIORITY_CONFIG[item.priority];
-    const s = STATUS_CONFIG[item.status];
+    const p = PRIORITY_CONFIG[item.priority] ?? PRIORITY_CONFIG.LOW;
+    const s = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.Pending;
     return (
       <TouchableOpacity
         style={styles.card}
@@ -258,22 +317,30 @@ function RequestsTab({ navigation }) {
       <Text style={styles.countText}>
         {filtered.length} {filtered.length === 1 ? 'request' : 'requests'} found
       </Text>
-
-      <FlatList
-        data={filtered}
-        keyExtractor={i => i.id}
-        renderItem={renderCard}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={
-          <View style={styles.emptyBox}>
-            <View style={styles.emptyIconBox}>
-              <LayoutList size={26} color="#9AA0B5" />
+      
+      {/* Added by Claude */}
+      {loading ? (
+        <View style={styles.emptyBox}>
+          <EGovSpinner size={36} />
+          <Text style={[styles.emptyText, { marginTop: 14 }]}>Loading requests...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={i => i.id}
+          renderItem={renderCard}
+          contentContainerStyle={styles.listContent}
+          ListEmptyComponent={
+            <View style={styles.emptyBox}>
+              <View style={styles.emptyIconBox}>
+                <LayoutList size={26} color="#9AA0B5" />
+              </View>
+              <Text style={styles.emptyText}>No requests found.</Text>
+              <Text style={styles.emptySubText}>Try adjusting your filters.</Text>
             </View>
-            <Text style={styles.emptyText}>No requests found.</Text>
-            <Text style={styles.emptySubText}>Try adjusting your filters.</Text>
-          </View>
-        }
-      />
+          }
+        />
+      )}
     </View>
   );
 }
@@ -281,29 +348,73 @@ function RequestsTab({ navigation }) {
 // ─── SLOTS TAB ───────────────────────────────────────────────
 function SlotsTab() {
   const [selectedDate, setSelectedDate] = useState(WEEK_DATES[0]);
-  const [slotData,     setSlotData]     = useState({});
+  const [slotData, setSlotData]     = useState({});
+  const [loading, setLoading]      = useState(false);
 
   const key        = dateKey(selectedDate);
   const todaySlots = slotData[key] ?? {};
-  const openCount  = Object.values(todaySlots).filter(Boolean).length;
+  const openCount  = DEFAULT_TIMES.filter(t => todaySlots[t] !== false).length;
 
-  const toggleSlot = (time) => {
-    // TODO: await supabase.from('time_slots').upsert({
-    //   slot_date: key, slot_time: time,
-    //   is_available: !(todaySlots[time] ?? false),
-    // }, { onConflict: 'slot_date,slot_time' });
+  useEffect(() => {
+    fetchSlotsForDate(selectedDate);
+  }, [selectedDate]);
+
+  const fetchSlotsForDate = async (date) => {
+    const dk = dateKey(date);
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('time_slots')
+        .select('slot_time, is_available')
+        .eq('slot_date', dk);
+      
+      if (error) throw error;
+
+      const map = {};
+      data.forEach(row =>{
+        const display = formatTimeForDisplay(row.slot_time);
+        map[display] = row.is_available;
+      });
+      setSlotData(prev => ({ ...prev, [dk]: map }));
+    } catch (error) {
+      console.log('Error fetching slots:', error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleSlot = async (time) => {
+    const dk = dateKey(selectedDate);
+    const current = slotData[dk]?.[time] !== false;
+    const newVal = !current;
+
     setSlotData(prev => ({
       ...prev,
-      [key]: {
-        ...prev[key],
-        [time]: !(prev[key]?.[time] ?? false),
-      },
+      [dk]: { ...prev[dk], [time]: newVal },
     }));
+
+    try {
+      const { error } = await supabase 
+        .from('time_slots')
+        .upsert({
+          slot_date: dk,
+          slot_time: formatTimeForDB(time),
+          is_available: newVal,
+        }, { onConflict: 'slot_date, slot_time' });
+
+      if (error) throw error;
+    } catch (error) {
+      setSlotData(prev => ({
+        ...prev,
+        [dk]: { ...prev[dk], [time]: current },
+      }));
+      Alert.alert('Error', 'Failed to update slot. Please try again.');
+      console.log('Slot toggle error:', error.message);
+    }
   };
 
   return (
     <View style={{ flex: 1 }}>
-      {/* 14-day date strip */}
       <View style={slotStyles.dateStripWrapper}>
         <ScrollView
           horizontal
@@ -335,7 +446,6 @@ function SlotsTab() {
         </ScrollView>
       </View>
 
-      {/* Selected date header */}
       <View style={slotStyles.selectedDateBar}>
         <View>
           <Text style={slotStyles.selectedDateLabel}>SELECTED DATE</Text>
@@ -348,48 +458,54 @@ function SlotsTab() {
 
       <View style={slotStyles.divider} />
 
-      {/* Slot list */}
-      <ScrollView contentContainerStyle={slotStyles.slotList}>
-        {DEFAULT_TIMES.map(time => {
-          const isOpen = todaySlots[time] ?? true;
-          const period = time.includes('AM') ? 'AM' : 'PM';
-          const timeNum = time.replace(' AM','').replace(' PM','');
-          return (
-            <View key={time} style={[slotStyles.slotRow, isOpen && slotStyles.slotRowOpen]}>
-              {/* Gold accent only on open slots */}
-              {isOpen && <View style={slotStyles.slotGoldAccent} />}
+      {loading ? (
+        <View style={[styles.emptyBox, { marginTop: 40 }]}>
+          <EGovSpinner size={36} />
+          <Text style={[styles.emptySubText, { marginTop: 14 }]}>Loading slots...</Text>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={slotStyles.slotList}>
+          {DEFAULT_TIMES.map(time => {
+            const isOpen = todaySlots[time] ?? true;
+            const period = time.includes('AM') ? 'AM' : 'PM';
+            const timeNum = time.replace(' AM','').replace(' PM','');
+            return (
+              <View key={time} style={[slotStyles.slotRow, isOpen && slotStyles.slotRowOpen]}>
+                {/* Gold accent only on open slots */}
+                {isOpen && <View style={slotStyles.slotGoldAccent} />}
 
-              {/* Time block */}
-              <View style={[slotStyles.slotTimeBlock, isOpen && slotStyles.slotTimeBlockOpen]}>
-                <Text style={[slotStyles.slotTimeNum, isOpen && slotStyles.slotTimeNumOpen]}>{timeNum}</Text>
-                <Text style={[slotStyles.slotTimePeriod, isOpen && slotStyles.slotTimePeriodOpen]}>{period}</Text>
-              </View>
-
-              {/* Status text */}
-              <View style={slotStyles.slotLeft}>
-                <Text style={[slotStyles.slotStatus, { color: isOpen ? '#1A5C8A' : '#BDBDBD' }]}>
-                  {isOpen ? 'Open for booking' : 'Closed'}
-                </Text>
-                <View style={[slotStyles.slotStatusPill, { backgroundColor: isOpen ? '#E8EFFD' : '#F2F2F2', borderColor: isOpen ? '#C5D5F5' : '#E0E0E0' }]}>
-                  <View style={[slotStyles.slotStatusDot, { backgroundColor: isOpen ? '#0038A8' : '#BDBDBD' }]} />
-                  <Text style={[slotStyles.slotStatusPillText, { color: isOpen ? '#0038A8' : '#BDBDBD' }]}>
-                    {isOpen ? 'Available' : 'Unavailable'}
-                  </Text>
+                {/* Time block */}
+                <View style={[slotStyles.slotTimeBlock, isOpen && slotStyles.slotTimeBlockOpen]}>
+                  <Text style={[slotStyles.slotTimeNum, isOpen && slotStyles.slotTimeNumOpen]}>{timeNum}</Text>
+                  <Text style={[slotStyles.slotTimePeriod, isOpen && slotStyles.slotTimePeriodOpen]}>{period}</Text>
                 </View>
-              </View>
 
-              {/* Toggle */}
-              <TouchableOpacity
-                style={[slotStyles.toggleTrack, isOpen ? slotStyles.trackOn : slotStyles.trackOff]}
-                onPress={() => toggleSlot(time)}
-                activeOpacity={0.8}
-              >
-                <View style={[slotStyles.toggleThumb, isOpen ? slotStyles.thumbOn : slotStyles.thumbOff]} />
-              </TouchableOpacity>
-            </View>
-          );
-        })}
-      </ScrollView>
+                {/* Status text */}
+                <View style={slotStyles.slotLeft}>
+                  <Text style={[slotStyles.slotStatus, { color: isOpen ? '#1A5C8A' : '#BDBDBD' }]}>
+                    {isOpen ? 'Open for booking' : 'Closed'}
+                  </Text>
+                  <View style={[slotStyles.slotStatusPill, { backgroundColor: isOpen ? '#E8EFFD' : '#F2F2F2', borderColor: isOpen ? '#C5D5F5' : '#E0E0E0' }]}>
+                    <View style={[slotStyles.slotStatusDot, { backgroundColor: isOpen ? '#0038A8' : '#BDBDBD' }]} />
+                    <Text style={[slotStyles.slotStatusPillText, { color: isOpen ? '#0038A8' : '#BDBDBD' }]}>
+                      {isOpen ? 'Available' : 'Unavailable'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Toggle */}
+                <TouchableOpacity
+                  style={[slotStyles.toggleTrack, isOpen ? slotStyles.trackOn : slotStyles.trackOff]}
+                  onPress={() => toggleSlot(time)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[slotStyles.toggleThumb, isOpen ? slotStyles.thumbOn : slotStyles.thumbOff]} />
+                </TouchableOpacity>
+              </View>
+            );
+          })}
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -402,8 +518,8 @@ function AccountTab({ navigation }) {
       {
         text: 'Log Out',
         style: 'destructive',
-        onPress: () => {
-          // TODO: await supabase.auth.signOut();
+        onPress: async () => {
+          await supabase.auth.signOut();
           navigation.replace('Login');
         },
       },
@@ -525,7 +641,7 @@ export default function AdminDashboardScreen({ navigation }) {
           {activeTab === 'Requests' && (
             <TouchableOpacity
               style={styles.searchIconBtn}
-              onPress={() => navigation.navigate('Search', { requests: MOCK_REQUESTS })}
+              onPress={() => navigation.navigate('Search', { requests })}
               activeOpacity={0.7}
             >
               <Search size={16} color="#FFFFFF" />

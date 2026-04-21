@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
   ScrollView, Platform, StatusBar, Alert
 } from 'react-native';
+import { supabase } from '../services/supabase';
 
 // ─── HELPERS ─────────────────────────────────────────────────
 const WEEK_DATES = (() => {
@@ -15,6 +16,11 @@ const WEEK_DATES = (() => {
   }
   return dates;
 })();
+
+const DEFAULT_TIMES = [
+  '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM',
+  '1:00 PM', '2:00 PM', '3:00 PM',  '4:00 PM',
+];
 
 function dateKey(date) {
   return date.toISOString().split('T')[0];
@@ -31,21 +37,25 @@ function formatFullDate(date) {
   });
 }
 
-// ─── MOCK AVAILABLE SLOTS ────────────────────────────────────
-// TODO: Replace with Supabase fetch:
-// const { data } = await supabase
-//   .from('time_slots')
-//   .select('slot_time')
-//   .eq('slot_date', dateKey(selectedDate))
-//   .eq('is_available', true);
-// Then map results to an array of time strings.
-const MOCK_AVAILABLE = {
-  [dateKey(WEEK_DATES[0])]: ['9:00 AM', '11:00 AM', '2:00 PM'],
-  [dateKey(WEEK_DATES[1])]: ['8:00 AM', '10:00 AM', '1:00 PM', '3:00 PM'],
-  [dateKey(WEEK_DATES[2])]: ['9:00 AM', '4:00 PM'],
-  [dateKey(WEEK_DATES[3])]: ['8:00 AM', '11:00 AM', '2:00 PM'],
-  [dateKey(WEEK_DATES[4])]: ['10:00 AM', '3:00 PM'],
-};
+// Converts DB time format "HH:MM" to display format "H:MM AM/PM"
+function formatTimeForDisplay(dbTime) {
+  const [hourStr, minuteStr] = dbTime.split(':');
+  const hour = parseInt(hourStr);
+  const minute = minuteStr;
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+  return `${displayHour}:${minute} ${ampm}`;
+}
+
+
+function formatTimeForDB(displayTime) {
+  const [time, ampm] = displayTime.split(' ');
+  const [hourStr, minuteStr] = time.split(':');
+  let hour = parseInt(hourStr);
+  if (ampm === 'PM' && hour !== 12) hour += 12;
+  if (ampm === 'AM' && hour === 12) hour = 0;
+  return `${String(hour).padStart(2, '0')}:${minuteStr}:00`;
+}
 
 const PRIORITY_CONFIG = {
   HIGH:   { color: '#C62828', bg: '#FFEBEE', label: '🚨 High Priority'   },
@@ -60,13 +70,82 @@ export default function BookAppointmentScreen({ route, navigation }) {
   const [selectedDate, setSelectedDate] = useState(WEEK_DATES[0]);
   const [selectedTime, setSelectedTime] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [availableSlots, setAvailableSlots] = useState([]);
+  const [slotsPerDate, setSlotsPerDate] = useState({});
+  const [loadingSlots, setLoadingSlots] = useState(false);
 
-  const key            = dateKey(selectedDate);
-  const availableSlots = MOCK_AVAILABLE[key] ?? [];
+  // Fetch available slots whenever selected date changes
+  useEffect(() => {
+    fetchSlots(selectedDate);
+  }, [selectedDate]);
+
+  // Pre-fetch slot availability for all 14 dates
+  useEffect(() => {
+    fetchAllDateAvailability();
+  }, []);
+
+  const fetchAllDateAvailability = async () => {
+    try {
+      const startDate = dateKey(WEEK_DATES[0]);
+      const endDate  = dateKey(WEEK_DATES[WEEK_DATES.length - 1]);
+      
+      const { data, error } = await supabase
+        .from('time_slots')
+        .select('slot_date, slot_time')
+        .eq('is_available', false)
+        .gte('slot_date', startDate)
+        .lte('slot_date', endDate);
+      if (error) throw error;
+
+      // Build a map of { dateKey: [times] }
+      const closedCountMap = {};
+      data.forEach(row => {
+        closedCountMap[row.slot_date] = (closedCountMap[row.slot_date] ?? 0) + 1;
+      });
+
+      const map = {};
+      WEEK_DATES.forEach(date => {
+        const dk = dateKey(date);
+        const closedCount = closedCountMap[dk] ?? 0;
+        map[dk] = DEFAULT_TIMES.length - closedCount;
+      });
+      setSlotsPerDate(map);
+    } catch (error) {
+      console.log('Error fetching date availability', error.message);
+    }
+  };
+
+  const fetchSlots = async (date) => {
+    setLoadingSlots(true);
+    setAvailableSlots([]);
+    setSelectedTime(null);
+
+    try {
+      const { data, error } = await supabase
+        .from('time_slots')
+        .select('slot_time, is_available')
+        .eq('slot_date', dateKey(date))
+        .eq('is_available', false)
+        .order('slot_time', { ascending: true });
+      
+        if (error) throw error;
+
+        const closedTimes = new Set(
+          data.map(row => formatTimeForDisplay(row.slot_time))
+        );
+
+        const openTimes = DEFAULT_TIMES.filter(t => !closedTimes.has(t));
+        setAvailableSlots(openTimes);
+    } catch (error) {
+      console.log('Error fetching slots:', error.message)
+      Alert.alert('Error fetching available slots. Please try again later.');
+    } finally {
+      setLoadingSlots(false);
+    }
+  };
 
   const handleDateSelect = (date) => {
     setSelectedDate(date);
-    setSelectedTime(null); // reset time when date changes
   };
 
   const handleConfirm = async () => {
@@ -78,41 +157,46 @@ export default function BookAppointmentScreen({ route, navigation }) {
     setIsSubmitting(true);
 
     try {
-      // TODO: Save appointment to Supabase
-      // Step 1 — insert into requests table:
-      // const { data: request, error: requestError } = await supabase
-      //   .from('requests')
-      //   .insert({
-      //     user_id:           currentUser.id,
-      //     service_requested: category,
-      //     priority:          result.priority,
-      //     intake_answers:    result,
-      //     status:            'Pending',
-      //     description:       result.instructions,
-      //     submitted_at:      new Date().toISOString(),
-      //   })
-      //   .select()
-      //   .single();
-      // if (requestError) throw requestError;
-      //
-      // Step 2 — insert into appointments table:
-      // const { error: apptError } = await supabase
-      //   .from('appointments')
-      //   .insert({
-      //     request_id:         request.id,
-      //     scheduled_date:     key,
-      //     scheduled_time:     selectedTime,
-      //     appointment_status: 'Pending',
-      //   });
-      // if (apptError) throw apptError;
-      //
-      // Step 3 — mark slot as unavailable:
-      // await supabase
-      //   .from('time_slots')
-      //   .update({ is_available: false })
-      //   .eq('slot_date', key)
-      //   .eq('slot_time', selectedTime);
+      // Get current user session
 
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!session) throw new Error('User not authenticated. Please log in again.');
+
+      const userId = session.user.id;
+      const dbTime = formatTimeForDB(selectedTime);
+      const dbDate = dateKey(selectedDate);
+
+      // Insert new appointment
+      const { data: request, error: requestError } = await supabase 
+        .from('requests')
+        .insert({
+          user_id: userId,
+          category: category,
+          service_requested: result.intake_answers?.subType ?? category,
+          priority: result.priority,
+          intake_answers: result,
+          status: 'Pending',
+          description: result.intake_answers.description ?? '',
+          submitted_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+      if (requestError) throw requestError;
+
+      // Insert into appointments table
+      const { error: apptError } = await supabase
+        .from('appointments')
+        .insert({
+          request_id: request.id,
+          user_id: userId,
+          scheduled_date: dbDate,
+          scheduled_time: dbTime,
+          appointment_status: 'Pending',
+        });
+
+      if (apptError) throw apptError;
+      
       navigation.replace('Confirmation', {
         category,
         facility:  result.facility,
@@ -121,7 +205,8 @@ export default function BookAppointmentScreen({ route, navigation }) {
         priority:  result.priority,
       });
     } catch (error) {
-      Alert.alert('Booking Error', error.message);
+      Alert.alert('Booking Error', 'Something went wrong. Please try again.');
+      console.log('Booking error:', error.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -162,7 +247,7 @@ export default function BookAppointmentScreen({ route, navigation }) {
             {WEEK_DATES.map((date, i) => {
               const isSelected  = dateKey(date) === dateKey(selectedDate);
               const isToday     = dateKey(date) === dateKey(new Date());
-              const hasSlots    = (MOCK_AVAILABLE[dateKey(date)] ?? []).length > 0;
+              const hasSlots    = (slotsPerDate[dateKey(date)] ?? DEFAULT_TIMES.length) > 0;
               return (
                 <TouchableOpacity
                   key={i}
@@ -171,8 +256,8 @@ export default function BookAppointmentScreen({ route, navigation }) {
                     isSelected  && styles.dateChipSelected,
                     !hasSlots   && styles.dateChipDisabled,
                   ]}
-                  onPress={() => hasSlots && handleDateSelect(date)}
-                  activeOpacity={hasSlots ? 0.7 : 1}
+                  onPress={() => handleDateSelect(date)}
+                  activeOpacity={0.7}
                 >
                   <Text style={[styles.dateDayLabel, isSelected && styles.dateLabelSelected]}>
                     {formatDayLabel(date)}
@@ -195,7 +280,11 @@ export default function BookAppointmentScreen({ route, navigation }) {
 
         {/* Time slots */}
         <Text style={styles.sectionLabel}>Select a time slot</Text>
-        {availableSlots.length === 0 ? (
+        {loadingSlots ? (
+          <View style={styles.noSlotsBox}>
+            <Text style={styles.noSlotsText}>Loading slots...</Text>
+          </View>
+        ) : availableSlots.length === 0 ? (
           <View style={styles.noSlotsBox}>
             <Text style={styles.noSlotsText}>No available slots on this date.</Text>
             <Text style={styles.noSlotsSubText}>Please select a different date.</Text>

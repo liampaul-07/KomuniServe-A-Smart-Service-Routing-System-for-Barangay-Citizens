@@ -5,15 +5,18 @@ import {
   Platform, ActivityIndicator
 } from 'react-native';
 
+import { supabase } from '../services/supabase';
+
 export default function SignUpScreen({ navigation }) {
-  const [name, setName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSignUp = async () => {
-    if (!name || !email || !password || !confirmPassword) {
+    if (!firstName || !lastName || !email || !password || !confirmPassword) {
       Alert.alert('Input Required', 'Please fill in all fields.');
       return;
     }
@@ -31,23 +34,35 @@ export default function SignUpScreen({ navigation }) {
     setIsLoading(true);
 
     try {
-      // TODO: Replace with Supabase auth
-      // const { data, error } = await supabase.auth.signUp({ email, password });
-      // if (error) throw error;
-      //
-      // Then insert into users table with default role 'resident':
-      // await supabase.from('users').insert({
-      //   id: data.user.id,
-      //   name,
-      //   contact: email,
-      //   role: 'resident',
-      // });
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+      
+      if (error) throw error;
 
-      Alert.alert('Account Created', 'Your account has been created.', [
-        { text: 'OK', onPress: () => navigation.navigate('Login') }
-      ]);
+      const { error: profileError } = await supabase
+      .from('users')
+      .upset({
+        id: data.user.id,
+        first_name: firstName,
+        last_name: lastName,
+        email: email,
+        role: 'resident',
+        is_active: true,
+      }, { onConflict: 'id' });
+
+      if (profileError) throw profileError;
+
+      Alert.alert(
+        'Account Created', 
+        'Your account has been created. You can now log in.', 
+        [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
+      );
     } catch (error) {
-      Alert.alert('Sign Up Error', error.message);
+      console.log('Sign Up error:', error.message);
+      Alert.alert('Sign Up Error', "An unexpected error occurred. Please try again later." );
+      
     } finally {
       setIsLoading(false);
     }
@@ -65,10 +80,18 @@ export default function SignUpScreen({ navigation }) {
 
           <TextInput
             style={styles.input}
-            placeholder="Full Name"
+            placeholder="First Name"
             placeholderTextColor="#999"
-            value={name}
-            onChangeText={setName}
+            value={firstName}
+            onChangeText={setFirstName}
+            autoCapitalize="words"
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Last Name"
+            placeholderTextColor="#999"
+            value={lastName}
+            onChangeText={setLastName}
             autoCapitalize="words"
           />
 

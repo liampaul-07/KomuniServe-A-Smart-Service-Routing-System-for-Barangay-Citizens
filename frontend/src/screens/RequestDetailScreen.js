@@ -20,6 +20,8 @@ import {
   XCircle,
 } from 'lucide-react-native';
 
+import { supabase } from '../services/supabase';
+
 // ─── Priority & Status config ─────────────────────────────────────────────────
 const PRIORITY_CONFIG = {
   HIGH:   { color: '#B91C1C', bg: '#FEF2F2', label: 'High Priority',   icon: AlertTriangle },
@@ -44,6 +46,15 @@ function formatDate(iso) {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
+}
+
+function formatTimeForDisplay(dbTime) {
+  if (!dbTime) return '';
+  const [hourStr, minuteStr] = dbTime.split(':');
+  const hour = parseInt(hourStr);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+  return `${displayHour}:${minuteStr} ${ampm}`;
 }
 
 // ─── Info Row ─────────────────────────────────────────────────────────────────
@@ -93,6 +104,26 @@ const rowStyles = StyleSheet.create({
 export default function RequestDetailScreen({ route, navigation }) {
   const { request } = route.params;
   const [status, setStatus] = useState(request.status);
+  const [appointment, setAppointment] = useState(null);
+
+  useEffect(() => {
+    fetchAppointment();
+  }, []);
+
+  const fetchAppointment = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('appointments')
+        .select('scheduled_date, scheduled_time, appointment_status')
+        .eq('request_id', parseInt(request.id))
+        .single();
+
+      if (error) return;
+      setAppointment(data);
+    } catch (error) {
+      console.log('Error fetching appointment:', error.message);
+    }
+  };
 
   const priority     = PRIORITY_CONFIG[request.priority];
   const statusColor  = STATUS_COLORS[status];
@@ -104,10 +135,44 @@ export default function RequestDetailScreen({ route, navigation }) {
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Approve',
-        onPress: () => {
-          // TODO: await supabase.from('requests').update({ status: 'Approved' }).eq('id', request.id);
-          setStatus('Approved');
-          Alert.alert('Done', 'Request has been approved.');
+        onPress: async () => {
+          try {
+            const requestId = parseInt(request.id);
+
+            const { error } = await supabase
+              .from('requests')
+              .update({ status: 'Approved' })
+              .eq('id', requestId);
+
+            if (error) throw error;
+
+            const { data: appt, error: apptFetchError } = await supabase
+              .from('appointments')
+              .select('scheduled_date, scheduled_time')
+              .eq('request_id', requestId)
+              .single();
+
+            if (!apptFetchError && appt) {
+              await supabase
+                .from('time_slots')
+                .upsert({
+                  slot_date:    appt.scheduled_date,
+                  slot_time:    appt.scheduled_time,
+                  is_available: false,
+                }, { onConflict: 'slot_date,slot_time' });
+
+              await supabase
+                .from('appointments')
+                .update({ appointment_status: 'Approved' })
+                .eq('request_id', requestId);
+            }
+
+            setStatus('Approved');
+            Alert.alert('Done', 'Request has been approved.');
+          } catch (error) {
+            Alert.alert('Error', 'Could not approve request. Please try again.');
+            console.log('Approve error:', error.message);
+          }
         }
       }
     ]);
@@ -119,10 +184,28 @@ export default function RequestDetailScreen({ route, navigation }) {
       {
         text: 'Reject',
         style: 'destructive',
-        onPress: () => {
-          // TODO: await supabase.from('requests').update({ status: 'Rejected' }).eq('id', request.id);
-          setStatus('Rejected');
-          Alert.alert('Done', 'Request has been rejected.');
+        onPress: async () => {
+          try {
+            const requestId = parseInt(request.id);
+
+            const { error } = await supabase
+              .from('requests')
+              .update({ status: 'Rejected' })
+              .eq('id', requestId);
+
+            if (error) throw error;
+
+            await supabase
+              .from('appointments')
+              .update({ appointment_status: 'Rejected' })
+              .eq('request_id', requestId);
+
+            setStatus('Rejected');
+            Alert.alert('Done', 'Request has been rejected.');
+          } catch (error) {
+            Alert.alert('Error', 'Could not reject request. Please try again.');
+            console.log('Reject error:', error.message);
+          }
         }
       }
     ]);
@@ -204,6 +287,22 @@ export default function RequestDetailScreen({ route, navigation }) {
             <Row label="Facility"  value={request.facility}                   IconComponent={Building2} />
             <Row label="Action"    value={request.action.replace(/_/g, ' ')}  IconComponent={Zap}       />
             <Row label="Submitted" value={formatDate(request.timestamp)}       IconComponent={Calendar}  />
+            {appointment && (
+              <>
+                <Row
+                  label="Scheduled Date"
+                  value={new Date(appointment.scheduled_date).toLocaleDateString('en-PH', {
+                    weekday: 'long', month: 'long', day: 'numeric'
+                  })}
+                  IconComponent={Calendar}
+                />
+                <Row
+                  label="Scheduled Time"
+                  value={formatTimeForDisplay(appointment.scheduled_time)}
+                  IconComponent={Clock}
+                />
+              </>
+            )}
           </View>
         </View>
 

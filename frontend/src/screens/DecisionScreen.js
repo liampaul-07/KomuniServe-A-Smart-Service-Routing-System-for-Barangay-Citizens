@@ -11,10 +11,12 @@ import {
   LogOut,
 } from 'lucide-react-native';
 
+import { supabase } from '../services/supabase';
+
 export default function DecisionScreen({ navigation }) {
 
-  const handleLogout = () => {
-    // TODO: await supabase.auth.signOut();
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     navigation.replace('Login');
   };
 

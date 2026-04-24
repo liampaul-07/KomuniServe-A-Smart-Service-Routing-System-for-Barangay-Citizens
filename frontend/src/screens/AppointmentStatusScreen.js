@@ -1,59 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
-  FlatList, Platform, StatusBar
+  FlatList, Platform, StatusBar, Alert,
 } from 'react-native';
+import { supabase } from '../services/supabase';
 
-// TODO: Replace with Supabase fetch:
-// const { data } = await supabase
-//   .from('appointments')
-//   .select(`
-//     *,
-//     requests (
-//       service_requested,
-//       priority,
-//       description,
-//       status,
-//       submitted_at
-//     )
-//   `)
-//   .eq('requests.user_id', currentUser.id)
-//   .order('created_at', { ascending: false });
-const MOCK_APPOINTMENTS = [
-  {
-    id: 'a1',
-    service:    'Medical',
-    subType:    'Physical',
-    facility:   'Barangay Health Center',
-    date:       'Wednesday, April 9, 2026',
-    time:       '9:00 AM',
-    priority:   'HIGH',
-    status:     'Pending',
-    submittedAt: '2026-04-06T08:00:00.000Z',
-  },
-  {
-    id: 'a2',
-    service:    'Documents',
-    subType:    'Clearance',
-    facility:   'Barangay Hall — Records Office',
-    date:       'Thursday, April 10, 2026',
-    time:       '10:00 AM',
-    priority:   'LOW',
-    status:     'Approved',
-    submittedAt: '2026-04-05T09:00:00.000Z',
-  },
-  {
-    id: 'a3',
-    service:    'Complaint',
-    subType:    'Noise',
-    facility:   'Barangay Hall — Lupon Tagapamayapa',
-    date:       'Friday, April 11, 2026',
-    time:       '2:00 PM',
-    priority:   'MEDIUM',
-    status:     'Rejected',
-    submittedAt: '2026-04-04T14:00:00.000Z',
-  },
-];
+function formatTimeForDisplay(dbTime)  {
+  if (!dbTime) return '';
+  const [hourStr, minuteStr] = dbTime.split(':');
+  const hour = parseInt(hourStr);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+  return `${displayHour}:${minuteStr} ${ampm}`;
+}
 
 const STATUS_CONFIG = {
   Pending:  { bg: '#FFF8E1', text: '#F9A825', dot: '#F9A825', message: 'Awaiting approval from barangay staff.' },
@@ -77,8 +36,63 @@ function formatSubmitted(iso) {
 
 export default function AppointmentStatusScreen({ navigation }) {
   const [filter, setFilter] = useState('All');
+  const [appointments, setAppointments] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = MOCK_APPOINTMENTS.filter(a =>
+  useEffect(() => {
+    fetchAppointments();
+  } , []);
+
+  const fetchAppointments = async () => {
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data, error } = await supabase
+        .from('appointments')
+        .select(`
+          id,
+          scheduled_date,
+          scheduled_time,
+          appointment_status,
+          created_at,
+          requests(
+            category,
+            service_requested,
+            priority,
+            description,
+            submitted_at,
+            intake_answers
+          )
+        `)
+        .eq('user_id', session.user.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+
+      const formatted = data.map(a => ({
+        id:           a.id.toString(),
+        service:      a.requests?.category                  ?? 'Unknown',
+        subType:      a.requests?.intake_answers?.subType ?? a.requests?.service_requested ?? '',
+        facility:     a.requests.intake_answers?.facility   ?? '',
+        date:         new Date(a.scheduled_date).toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric'}),
+        time:         formatTimeForDisplay(a.scheduled_time),
+        priority:     a.requests?.priority                  ?? 'LOW',
+        status:       a.appointment_status                  ?? 'Pending',
+        submittedAt:  a.requests?.submitted_at              ?? a.created_at,
+      }));
+
+      setAppointments(formatted);
+    } catch (error) {
+      console.error('Error fetching appointments:', error);
+      Alert.alert('Error', 'Failed to load appointments. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filtered = appointments.filter(a =>
     filter === 'All' || a.status === filter
   );
 
@@ -91,8 +105,8 @@ export default function AppointmentStatusScreen({ navigation }) {
         {/* Card header */}
         <View style={styles.cardTop}>
           <View style={styles.cardTitleGroup}>
-            <Text style={styles.cardService}>{item.service}</Text>
-            <Text style={styles.cardSubType}>{item.subType.replace(/_/g, ' ')}</Text>
+            <Text style={styles.cardService}>{item.subType.replace(/_/g, ' ')}</Text>
+            <Text style={styles.cardSubType}>{item.service}</Text>
           </View>
           <View style={[styles.statusBadge, { backgroundColor: s.bg }]}>
             <View style={[styles.statusDot, { backgroundColor: s.dot }]} />
@@ -160,6 +174,8 @@ export default function AppointmentStatusScreen({ navigation }) {
         keyExtractor={i => i.id}
         renderItem={renderCard}
         contentContainerStyle={styles.list}
+        onRefresh={fetchAppointments}
+        refreshing={loading}
         ListEmptyComponent={
           <View style={styles.emptyBox}>
             <Text style={styles.emptyIcon}>📭</Text>

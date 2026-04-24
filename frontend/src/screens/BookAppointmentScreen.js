@@ -64,7 +64,7 @@ const PRIORITY_CONFIG = {
 };
 
 export default function BookAppointmentScreen({ route, navigation }) {
-  const { result, category } = route.params;
+  const { result, category, subType, urgency, description } = route.params;
   const priority = PRIORITY_CONFIG[result.priority];
 
   const [selectedDate, setSelectedDate] = useState(WEEK_DATES[0]);
@@ -157,9 +157,7 @@ export default function BookAppointmentScreen({ route, navigation }) {
     setIsSubmitting(true);
 
     try {
-      // Get current user session
-
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      const { data: { session } , error: sessionError } = await supabase.auth.getSession();
       if (sessionError) throw sessionError;
       if (!session) throw new Error('User not authenticated. Please log in again.');
 
@@ -167,42 +165,49 @@ export default function BookAppointmentScreen({ route, navigation }) {
       const dbTime = formatTimeForDB(selectedTime);
       const dbDate = dateKey(selectedDate);
 
-      // Insert new appointment
-      const { data: request, error: requestError } = await supabase 
+      // Insert new request
+      const { data: request, error: requestError } = await supabase
         .from('requests')
         .insert({
-          user_id: userId,
-          category: category,
-          service_requested: result.intake_answers?.subType ?? category,
-          priority: result.priority,
-          intake_answers: result,
-          status: 'Pending',
-          description: result.intake_answers?.description ?? '',
-          submitted_at: new Date().toISOString(),
+          user_id:            userId,
+          category:           category,
+          service_requested:  subType ?? category,
+          priority:           result.priority,
+          intake_answers:     {
+            ...result,
+            subType: subType,
+            urgency: urgency,
+            category: category,
+            description: description
+          },
+          status:             'Pending',
+          description:        description ?? '',
+          submitted_at:       new Date().toISOString(),
         })
         .select()
         .single();
       if (requestError) throw requestError;
 
-      // Insert into appointments table
       const { error: apptError } = await supabase
         .from('appointments')
         .insert({
-          request_id: request.id,
-          user_id: userId,
-          scheduled_date: dbDate,
-          scheduled_time: dbTime,
+          request_id:         request.id,
+          user_id:            userId,
+          scheduled_date:     dbDate,
+          scheduled_time:     dbTime,
           appointment_status: 'Pending',
         });
 
       if (apptError) throw apptError;
       
       navigation.replace('Confirmation', {
+        mode:     'appointment',
         category,
-        facility:  result.facility,
-        date:      formatFullDate(selectedDate),
-        time:      selectedTime,
-        priority:  result.priority,
+        subType,
+        facility: result.facility,
+        date:     formatFullDate(selectedDate),
+        time:     selectedTime,
+        priority: result.priority,
       });
     } catch (error) {
       Alert.alert('Booking Error', 'Something went wrong. Please try again.');

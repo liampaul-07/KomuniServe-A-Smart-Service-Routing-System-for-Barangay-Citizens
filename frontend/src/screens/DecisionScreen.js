@@ -135,7 +135,7 @@ export default function DecisionScreen({ navigation }) {
             <LogOut size={15} color="#C62828" strokeWidth={2} />
             <Text style={styles.logoutText}>Log Out</Text>
           </TouchableOpacity>
-          <Text style={styles.footerNote}>KomuniServe v1.0.0</Text>
+          <Text style={styles.footerNote}>KomuniServe v7.12.0</Text>
         </View>
 
       </View>

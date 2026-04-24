@@ -154,18 +154,19 @@ function HeaderLogo() {
 }
 
 // ─── REQUESTS TAB ────────────────────────────────────────────
-function RequestsTab({ navigation }) {
+function RequestsTab({ navigation, requests, setRequests }) {
   const [category, setCategory] = useState('All');
   const [status,   setStatus]   = useState('All');
-  const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchRequests();
   }, []);
 
-  const fetchRequests = async () => {
-    setLoading(true);
+  const fetchRequests = async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    else setLoading(true);
+    
     try {
       const { data, error } = await supabase
         .from('requests')
@@ -178,9 +179,10 @@ function RequestsTab({ navigation }) {
           description,
           submitted_at,
           user_id,
+          intake_answers,
           users(
-          first_name,
-          last_name
+            first_name,
+            last_name
           )
         `)
         .order('submitted_at', { ascending: false });
@@ -189,6 +191,7 @@ function RequestsTab({ navigation }) {
 
       const formatted = data.map(r => ({
         id: r.id.toString(),
+        user_id: r.user_id,
         userName: r.users ? `${r.users.first_name} ${r.users.last_name}` : 'Unknown',
         category: r.category ?? '',
         subType: r.service_requested ?? '',
@@ -206,6 +209,7 @@ function RequestsTab({ navigation }) {
       Alert.alert('Error', 'Failed to load requests. Please try again later.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -330,6 +334,8 @@ function RequestsTab({ navigation }) {
           keyExtractor={i => i.id}
           renderItem={renderCard}
           contentContainerStyle={styles.listContent}
+          onRefresh={fetchRequests}
+          refreshing={loading}
           ListEmptyComponent={
             <View style={styles.emptyBox}>
               <View style={styles.emptyIconBox}>
@@ -350,6 +356,7 @@ function SlotsTab() {
   const [selectedDate, setSelectedDate] = useState(WEEK_DATES[0]);
   const [slotData, setSlotData]     = useState({});
   const [loading, setLoading]      = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const key        = dateKey(selectedDate);
   const todaySlots = slotData[key] ?? {};
@@ -400,7 +407,7 @@ function SlotsTab() {
           slot_date: dk,
           slot_time: formatTimeForDB(time),
           is_available: newVal,
-        }, { onConflict: 'slot_date, slot_time' });
+        }, { onConflict: 'slot_date,slot_time' });
 
       if (error) throw error;
     } catch (error) {
@@ -512,6 +519,28 @@ function SlotsTab() {
 
 // ─── ACCOUNT TAB ─────────────────────────────────────────────
 function AccountTab({ navigation }) {
+  const [adminProfile, setAdminProfile] = useState(null);
+
+  useEffect(() => {
+    const fetchProfile = async () => { 
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const { data, error } = await supabase
+        .from('users')
+        .select('first_name, last_name, email')
+        .eq('id', session.user.id)
+        .single();
+        if (!error && data) setAdminProfile(data);
+      } catch (error) {
+        console.log('Error fetching profile:', error.message);
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  const displayName = adminProfile ? `${adminProfile.first_name} ${adminProfile.last_name}` : 'Admin';
+
   const handleLogout = () => {
     Alert.alert('Log Out', 'Are you sure you want to log out?', [
       { text: 'Cancel', style: 'cancel' },
@@ -545,8 +574,10 @@ function AccountTab({ navigation }) {
           </View>
         </View>
         <View style={styles.accountCardBody}>
-          <Text style={styles.accountName}>Admin</Text>
-          <Text style={styles.accountEmail}>admin@komuniserve.com</Text>
+          <Text style={styles.accountName}>{displayName}</Text>
+          <Text style={styles.accountEmail}>
+            {adminProfile?.email ?? 'admin@komuniserve.com'}
+          </Text>
         </View>
       </View>
 
@@ -559,7 +590,7 @@ function AccountTab({ navigation }) {
             <Text style={styles.accountItemLabel}>App Version</Text>
           </View>
           <View style={styles.accountItemValueBox}>
-            <Text style={styles.accountItemValue}>1.0.0</Text>
+            <Text style={styles.accountItemValue}>7.12.0</Text>
           </View>
         </View>
         <View style={[styles.accountItem, { borderBottomWidth: 0 }]}>
@@ -603,6 +634,7 @@ function AccountTab({ navigation }) {
 // ─── MAIN DASHBOARD ──────────────────────────────────────────
 export default function AdminDashboardScreen({ navigation }) {
   const [activeTab, setActiveTab] = useState('Requests');
+  const [requests, setRequests] = useState([]);
 
   const TAB_TITLES = {
     Requests: 'Service Requests',
@@ -652,7 +684,12 @@ export default function AdminDashboardScreen({ navigation }) {
 
       {/* Tab content */}
       <View style={{ flex: 1 }}>
-        {activeTab === 'Requests' && <RequestsTab navigation={navigation} />}
+        {activeTab === 'Requests' && (
+          <RequestsTab 
+            navigation={navigation}
+            requests={requests}
+            setRequests={setRequests} />
+        )}
         {activeTab === 'Slots'    && <SlotsTab />}
         {activeTab === 'Account'  && <AccountTab navigation={navigation} />}
       </View>

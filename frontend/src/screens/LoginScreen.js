@@ -148,7 +148,7 @@ export default function LoginScreen({ navigation }) {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           
-          <View style={styles.topStripe} />
+          <View style={styles.topStripe}/>
 
           <Animated.View style={[styles.logoBlock, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
             <View style={styles.iconLogoWrapper}>
@@ -429,5 +429,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     paddingTop: 32,
     paddingBottom: 8,
+  },
+  topStripe: {
+    height: 6,
+    backgroundColor: '#1a73e8', // match your brand color
+    width: '100%',
   },
 });

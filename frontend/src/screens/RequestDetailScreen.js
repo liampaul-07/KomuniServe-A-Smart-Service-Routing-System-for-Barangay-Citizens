@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
-  Alert, ScrollView, Platform, StatusBar, Image,
+  Alert, ScrollView, Platform, StatusBar, Image, TextInput
 } from 'react-native';
 import {
   ChevronLeft,
@@ -105,6 +105,8 @@ export default function RequestDetailScreen({ route, navigation }) {
   const { request } = route.params;
   const [status, setStatus] = useState(request.status);
   const [appointment, setAppointment] = useState(null);
+  const [fullRequestData, setFullRequestData] = useState(null);
+  const [staffNotes, setStaffNotes] = useState('');
 
   useEffect(() => {
     fetchAppointment();
@@ -112,14 +114,22 @@ export default function RequestDetailScreen({ route, navigation }) {
 
   const fetchAppointment = async () => {
     try {
-      const { data, error } = await supabase
+      const requestId = parseInt(request.id);
+
+      const { data: appt, error: apptError } = await supabase
         .from('appointments')
         .select('scheduled_date, scheduled_time, appointment_status')
-        .eq('request_id', parseInt(request.id))
+        .eq('request_id', requestId)
         .single();
 
-      if (error) return;
-      setAppointment(data);
+      if (!apptError && appt) setAppointment(appt);
+
+      const { data: fullReq, error: reqError } = await supabase
+        .from('requests')
+        .select('service_requested, intake_answers')
+        .eq('id', requestId)
+        .single();
+      if (!reqError && fullReq) setFullRequestData(fullReq);
     } catch (error) {
       console.log('Error fetching appointment:', error.message);
     }
@@ -130,6 +140,34 @@ export default function RequestDetailScreen({ route, navigation }) {
   const PriorityIcon = priority.icon;
   const StatusIcon   = STATUS_ICONS[status];
 
+  const sendPushNotification = async (token, title, body) => {
+    if (!token) return;
+    try {
+      await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: token, sound: 'default', title, body }),
+      });
+    } catch (e) {
+      console.log('Push notification failed silently:', e.message);
+    }
+  };
+
+  const insertNotification = async (userId, title, message, type) => {
+    try {
+      await supabase.from('notifications').insert({
+        user_id:           userId,
+        notification_type: type,
+        title,
+        message,
+        request_id:        parseInt(request.id),
+        is_read:           false,
+        created_at:        new Date().toISOString(),
+      });
+    } catch (e) {
+      console.log('Notification insert failed:', e.message);
+    }
+  };
   const handleApprove = () => {
     Alert.alert('Approve Request', `Approve ${request.userName}'s request?`, [
       { text: 'Cancel', style: 'cancel' },
@@ -143,7 +181,6 @@ export default function RequestDetailScreen({ route, navigation }) {
               .from('requests')
               .update({ status: 'Approved' })
               .eq('id', requestId);
-
             if (error) throw error;
 
             const { data: appt, error: apptFetchError } = await supabase
@@ -153,22 +190,42 @@ export default function RequestDetailScreen({ route, navigation }) {
               .single();
 
             if (!apptFetchError && appt) {
-              await supabase
-                .from('time_slots')
-                .upsert({
-                  slot_date:    appt.scheduled_date,
-                  slot_time:    appt.scheduled_time,
-                  is_available: false,
-                }, { onConflict: 'slot_date,slot_time' });
+              await supabase.from('time_slots').upsert({
+                slot_date:    appt.scheduled_date,
+                slot_time:    appt.scheduled_time,
+                is_available: false,
+              }, { onConflict: 'slot_date,slot_time' });
 
               await supabase
                 .from('appointments')
-                .update({ appointment_status: 'Approved' })
+                .update({
+                  appointment_status: 'Approved',
+                  staff_notes:        staffNotes.trim() || null,
+                })
                 .eq('request_id', requestId);
             }
 
+            // Notification
+            const notifTitle   = 'Appointment Approved';
+            const notifMessage = staffNotes.trim()
+              ? `Your appointment for ${request.category} has been approved. Note from staff: ${staffNotes.trim()}`
+              : `Your appointment for ${request.category} has been approved.`;
+
+            await insertNotification(request.user_id, notifTitle, notifMessage, 'Approved');
+
+            // Push notification
+            const { data: userData } = await supabase
+              .from('users')
+              .select('expo_push_token')
+              .eq('id', request.user_id)
+              .single();
+
+            if (userData?.expo_push_token) {
+              await sendPushNotification(userData.expo_push_token, notifTitle, notifMessage);
+            }
+
             setStatus('Approved');
-            Alert.alert('Done', 'Request has been approved.');
+            Alert.alert('Done', 'Request has been approved and resident notified.');
           } catch (error) {
             Alert.alert('Error', 'Could not approve request. Please try again.');
             console.log('Approve error:', error.message);
@@ -192,16 +249,37 @@ export default function RequestDetailScreen({ route, navigation }) {
               .from('requests')
               .update({ status: 'Rejected' })
               .eq('id', requestId);
-
             if (error) throw error;
 
             await supabase
               .from('appointments')
-              .update({ appointment_status: 'Rejected' })
+              .update({
+                appointment_status: 'Rejected',
+                staff_notes:        staffNotes.trim() || null,
+              })
               .eq('request_id', requestId);
 
+            // Notification
+            const notifTitle   = 'Appointment Rejected';
+            const notifMessage = staffNotes.trim()
+              ? `Your appointment for ${request.category} has been rejected. Reason: ${staffNotes.trim()}`
+              : `Your appointment for ${request.category} has been rejected.`;
+
+            await insertNotification(request.user_id, notifTitle, notifMessage, 'Rejected');
+
+            // Push notification
+            const { data: userData } = await supabase
+              .from('users')
+              .select('expo_push_token')
+              .eq('id', request.user_id)
+              .single();
+
+            if (userData?.expo_push_token) {
+              await sendPushNotification(userData.expo_push_token, notifTitle, notifMessage);
+            }
+
             setStatus('Rejected');
-            Alert.alert('Done', 'Request has been rejected.');
+            Alert.alert('Done', 'Request has been rejected and resident notified.');
           } catch (error) {
             Alert.alert('Error', 'Could not reject request. Please try again.');
             console.log('Reject error:', error.message);
@@ -282,11 +360,31 @@ export default function RequestDetailScreen({ route, navigation }) {
           {/* ✅ Gold 4px top accent stripe on card */}
           <View style={styles.cardGoldAccent} />
           <View style={styles.cardBody}>
-            <Row label="Category"  value={request.category}                   IconComponent={Tag}       />
-            <Row label="Type"      value={request.subType.replace(/_/g, ' ')} IconComponent={Layers}    />
-            <Row label="Facility"  value={request.facility}                   IconComponent={Building2} />
-            <Row label="Action"    value={request.action.replace(/_/g, ' ')}  IconComponent={Zap}       />
-            <Row label="Submitted" value={formatDate(request.timestamp)}       IconComponent={Calendar}  />
+            <Row 
+              label="Category"  
+              value={request.category}                   
+              IconComponent={Tag}       
+            />
+            <Row 
+              label="Type"      
+              value={(fullRequestData?.intake_answers?.subType ?? fullRequestData?.service_requested ?? '').replace(/_/g, ' ')} 
+              IconComponent={Layers}    
+            />
+            <Row 
+              label="Facility"  
+              value={fullRequestData?.intake_answers?.facility ?? request.facility ?? ''}                   
+              IconComponent={Building2} 
+            />
+            <Row 
+              label="Action"    
+              value={request.action?.replace(/_/g, ' ') ?? ''}  
+              IconComponent={Zap}       
+            />
+            <Row 
+              label="Submitted" 
+              value={formatDate(request.timestamp)}       
+              IconComponent={Calendar}  
+            />
             {appointment && (
               <>
                 <Row
@@ -325,6 +423,25 @@ export default function RequestDetailScreen({ route, navigation }) {
         {status === 'Pending' && (
           <>
             <Text style={styles.sectionLabelText}>ADMIN ACTION</Text>
+
+            {/* Staff notes input */}
+            <View style={styles.notesCard}>
+              <View style={styles.cardGoldAccent} />
+              <View style={[styles.cardBody, { paddingTop: 14 }]}>
+                <Text style={styles.notesLabel}>Note to Resident (optional)</Text>
+                <TextInput
+                  style={styles.notesInput}
+                  placeholder="Add a reason, instructions, or remarks..."
+                  placeholderTextColor="#B0B8C9"
+                  multiline
+                  numberOfLines={3}
+                  value={staffNotes}
+                  onChangeText={setStaffNotes}
+                  textAlignVertical="top"
+                />
+              </View>
+            </View>
+
             <View style={styles.actionRow}>
               <TouchableOpacity
                 style={styles.approveBtn}
@@ -603,5 +720,31 @@ const styles = StyleSheet.create({
     color: '#CBD5E1',
     fontSize: 11,
     marginTop: 16,
+  },
+  notesCard: {
+  backgroundColor: '#FFFFFF',
+  borderRadius: 10,
+  marginBottom: 14,
+  borderWidth: 1,
+  borderColor: '#E2E8F0',
+  overflow: 'hidden',
+  },
+  notesLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#94A3B8',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  notesInput: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 14,
+    color: '#334155',
+    minHeight: 80,
   },
 });

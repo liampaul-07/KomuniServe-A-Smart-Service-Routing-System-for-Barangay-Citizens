@@ -37,7 +37,6 @@ export const processRequest = ({ category, subType, urgency, description }) => {
       action = 'SCHEDULE';
       requiresAppointment = true;
       facility = FACILITIES.SOCIAL_WELFARE;
-
     } else if (subType === 'Checkup') {
       priority = 'LOW';
       instructions = 'Schedule a routine checkup at the Barangay Health Center. Bring your PhilHealth ID.';
@@ -64,37 +63,40 @@ export const processRequest = ({ category, subType, urgency, description }) => {
     instructions = `Schedule an appointment to request this document.\n\nRequirements:\n${reqList}`;
 
   } else if (category === 'Complaint') {
-    const infraTypes = ['Broken_Water_Pump', 'Broken_Electrical_Wire', 'Eroded_Road', 'Other_Infrastructure'];
-    const isInfra = infraTypes.includes(subType);
+    const submitReportTypes = [
+      'Noise',
+      'Broken_Water_Pump', 'Broken_Electrical_Wire',
+      'Eroded_Road', 'Other_Infrastructure', 'Infrastructure',
+    ];
+    const isSubmitReport = submitReportTypes.includes(subType);
 
-    if (isInfra) {
-      facility = FACILITIES.INFRA;
+    if (isSubmitReport) {
+      const isInfra = subType !== 'Noise';
+      facility = isInfra ? FACILITIES.INFRA : FACILITIES.BARANGAY_HALL;
+
       const highInfra = ['Broken_Electrical_Wire', 'Eroded_Road'];
-      if (highInfra.includes(subType)) {
+      if (highInfra.includes(subType) || urgency === 'High') {
         priority = 'HIGH';
-        instructions = `This has been flagged as an urgent infrastructure hazard. Your report will be submitted to the barangay immediately.\n\nYour report: "${description}"`;
+        instructions = `This has been flagged as an urgent hazard. Your report will be submitted directly to the barangay.\n\nYour report: "${description}"`;
+      } else if (subType === 'Noise') {
+        priority = 'LOW';
+        instructions = `Your noise or public disturbance complaint will be submitted to the barangay for action.\n\nYour report: "${description}"`;
       } else {
         priority = 'MEDIUM';
-        instructions = `Your infrastructure report will be submitted to the barangay for assessment.\n\nYour report: "${description}"`;
+        instructions = `Your report will be submitted to the barangay for assessment.\n\nYour report: "${description}"`;
       }
-      action = 'SUBMIT_REPORT';
-      requiresAppointment = false;
-
-    } else {
-      facility = urgency === 'High' ? FACILITIES.BARANGAY_HALL : FACILITIES.LUPON;
-      if (urgency === 'High') {
-        priority = 'HIGH';
-        instructions = `Your complaint has been flagged as urgent. Proceed to the barangay hall immediately.\n\nYour concern: "${description}"`;
-        action = 'WALK_IN';
-        requiresAppointment = false;
-      } else {
-        priority = 'MEDIUM';
-        instructions = `Your complaint will be scheduled for mediation or assessment by the barangay.\n\nYour concern: "${description}"`;
-        action = 'SCHEDULE';
-        requiresAppointment = true;
-      }
-    }
+    action = 'SUBMIT_REPORT';
+    requiresAppointment = false;
+  } else {
+    // COMPLAINT_OPTIONS: Domestic_Issue, Physical_Threat, Property_Dispute, Other
+    facility = urgency === 'High' ? FACILITIES.BARANGAY_HALL : FACILITIES.LUPON;
+    priority = urgency ? urgency.toUpperCase() : 'MEDIUM';
+    const readableType = subType ? subType.replace(/_/g, ' ') : 'your concern';
+    instructions = `You are filing a complaint regarding: ${readableType}. You may submit this as a report only, or also schedule an appointment for mediation.\n\nYour concern: "${description}"`;
+    action = 'COMPLAINT_OPTIONS';
+    requiresAppointment = false;
   }
+}
 
   return {
     priority,

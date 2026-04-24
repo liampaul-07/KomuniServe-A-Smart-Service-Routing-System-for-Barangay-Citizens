@@ -42,14 +42,14 @@ export default function SignUpScreen({ navigation }) {
       if (error) throw error;
 
       const { error: profileError } = await supabase
-      .from('users')
-      .upset({
-        id: data.user.id,
-        first_name: firstName,
-        last_name: lastName,
-        email: email,
-        role: 'resident',
-        is_active: true,
+        .from('users')
+        .upsert({
+          id: data.user.id,
+          first_name: firstName,
+          last_name: lastName,
+          email: email,
+          role: 'resident',
+          is_active: true,
       }, { onConflict: 'id' });
 
       if (profileError) throw profileError;
@@ -62,7 +62,6 @@ export default function SignUpScreen({ navigation }) {
     } catch (error) {
       console.log('Sign Up error:', error.message);
       Alert.alert('Sign Up Error', "An unexpected error occurred. Please try again later." );
-      
     } finally {
       setIsLoading(false);
     }

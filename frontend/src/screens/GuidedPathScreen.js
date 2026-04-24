@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
   Platform, StatusBar, TextInput, KeyboardAvoidingView, ScrollView,
-  Image,
+  Image, Alert
 } from 'react-native';
 import { processRequest } from '../services/RuleEngine';
+import { supabase } from '../services/supabase'
 
 import {
   HeartPulse,
@@ -28,6 +29,7 @@ import {
   MessageSquare,
   ChevronRight,
   Send,
+  Calendar,
 } from 'lucide-react-native';
 
 const ICON_MAP = {
@@ -57,6 +59,12 @@ const ICON_MAP = {
 };
 
 const URGENCY_VALUES = ['High'];
+
+const COMPLAINT_BOOKING_REQUIREMENTS = {
+  Property_Dispute: ['Valid ID', 'Brief description of the dispute', 'Property documents (title, photos, etc.)'],
+  Physical_Threat:  ['Valid ID', 'Brief description of the incident', 'Any evidence (photos, messages, witness names)'],
+  Domestic_Issue:   ['Valid ID', 'Brief description of the situation'],
+};
 
 const tree = {
   START: {
@@ -95,21 +103,26 @@ const tree = {
   COMPLAINT_TYPE: {
     question: "What type of complaint?",
     options: [
-      { label: "Noise or Public Disturbance",    value: "Noise",            next: "COMPLAINT_INPUT" },
-      { label: "Property Dispute",               value: "Property_Dispute", next: "COMPLAINT_INPUT" },
-      { label: "Physical Threat or Violence",    value: "Physical_Threat",  urgency: "High", next: "COMPLAINT_INPUT" },
-      { label: "Domestic Issue",                 value: "Domestic_Issue",   next: "COMPLAINT_INPUT" },
-      { label: "Street / Infrastructure Problem",value: "Infrastructure",   next: "COMPLAINT_INFRA" },
-      { label: "Other Concern",                  value: "Other",            next: "COMPLAINT_INPUT" },
+      { label: "Noise or Public Disturbance",    value: "Noise",            urgency: "Low",    next: "COMPLAINT_INPUT" },
+      { label: "Property Dispute",               value: "Property_Dispute", urgency: "Medium", next: "COMPLAINT_BOOKING_INFO" },
+      { label: "Physical Threat or Violence",    value: "Physical_Threat",  urgency: "High",   next: "COMPLAINT_BOOKING_INFO" },
+      { label: "Domestic Issue",                 value: "Domestic_Issue",   urgency: "High",   next: "COMPLAINT_BOOKING_INFO" },
+      { label: "Street / Infrastructure Problem",value: "Infrastructure",                      next: "COMPLAINT_INFRA" },
+      { label: "Other Concern",                  value: "Other",            urgency: "Low",    next: "COMPLAINT_INPUT" },
     ]
   },
+  COMPLAINT_BOOKING_INFO: {
+    type: 'booking_info',
+    question: 'Book a Mediation Appointment',
+  },
+  
   COMPLAINT_INFRA: {
     question: "What kind of infrastructure problem?",
     options: [
-      { label: "Broken Water Pump",       value: "Broken_Water_Pump",      next: "COMPLAINT_INPUT" },
-      { label: "Broken Electrical Wire",  value: "Broken_Electrical_Wire", urgency: "High", next: "COMPLAINT_INPUT" },
-      { label: "Eroded or Dangerous Road",value: "Eroded_Road",            urgency: "High", next: "COMPLAINT_INPUT" },
-      { label: "Other Infrastructure Issue", value: "Other_Infrastructure",next: "COMPLAINT_INPUT" },
+      { label: "Broken Water Pump",       value: "Broken_Water_Pump",      urgency: "Medium", next: "COMPLAINT_INPUT" },
+      { label: "Broken Electrical Wire",  value: "Broken_Electrical_Wire", urgency: "High",   next: "COMPLAINT_INPUT" },
+      { label: "Eroded or Dangerous Road",value: "Eroded_Road",            urgency: "High",   next: "COMPLAINT_INPUT" },
+      { label: "Other Infrastructure Issue", value: "Other_Infrastructure",urgency: "Medium", next: "COMPLAINT_INPUT" },
     ]
   },
   COMPLAINT_INPUT: {
@@ -176,18 +189,68 @@ export default function GuidedPathScreen({ navigation }) {
 
     if (option.next === 'FINISH') {
       const result = processRequest(updated);
-      navigation.navigate('Result', { result, category: updated.category });
+      navigation.navigate('Result', { 
+        result, 
+        category: updated.category,
+        subType: updated.subType,
+        urgency: updated.urgency,
+        description: updated.description,
+      });
     } else {
       setHistory([...history, currentStep]);
       setCurrentStep(option.next);
     }
   };
 
-  const handleTextSubmit = () => {
+  const handleBookComplaint = () => {
+    const result = processRequest(selections);
+    navigation.navigate('BookAppointment', {
+      result,
+      category: selections.category,
+      subType:  selections.subType,
+      urgency:  selections.urgency,
+      description: '',
+    });
+  };
+
+  const handleTextSubmit = async () => {
+    if (!inputText.trim()) {
+      Alert.alert('Required', 'Please enter a description before submitting.');
+      return;
+    }
+
     const updated = { ...selections, description: inputText.trim() };
     setSelections(updated);
-    const result = processRequest(updated);
-    navigation.navigate('Result', { result, category: updated.category });
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { Alert.alert('Error', 'You must be logged in.'); return; }
+
+      const result = processRequest(updated);
+
+      const { error } = await supabase.from('requests').insert({
+        user_id:           session.user.id,
+        category:          updated.category,
+        service_requested: updated.subType ?? updated.category,
+        priority:          result.priority,
+        intake_answers:    { ...result, subType: updated.subType, urgency: updated.urgency, category: updated.category, description: updated.description },
+        status:            'Pending',
+        description:       updated.description,
+        submitted_at:      new Date().toISOString(),
+      });
+
+      if (error) throw error;
+
+      navigation.replace('Confirmation', {
+        mode:     'report',
+        category: updated.category,
+        subType:  updated.subType,
+        facility: result.facility,
+        priority: result.priority,
+      });
+    } catch (error) {
+      Alert.alert('Error', 'Failed to submit report. Please try again.');
+    }
   };
 
   const handleBack = () => {
@@ -237,9 +300,42 @@ export default function GuidedPathScreen({ navigation }) {
 
           {/* ── Question ── */}
           <Text style={styles.question}>{currentQ.question}</Text>
+          
+          
 
           {/* ── Text input mode ── */}
-          {currentQ.type === 'text_input' ? (
+          
+          {currentQ.type === 'booking_info' ? (
+            <View style={styles.bookingInfoGroup}>
+              <Text style={styles.bookingInfoDesc}>
+                Please bring the following to your appointment:
+              </Text>
+
+              <View style={styles.requirementsCard}>
+                {(COMPLAINT_BOOKING_REQUIREMENTS[selections.subType] ?? ['Valid ID', 'Brief description']).map((req, i) => (
+                  <View key={i} style={styles.requirementRow}>
+                    <View style={styles.requirementDot} />
+                    <Text style={styles.requirementText}>{req}</Text>
+                  </View>
+                ))}
+              </View>
+
+              <View style={styles.officeHoursRow}>
+                <Text style={styles.officeHoursText}>
+                  🕐 Office hours: Monday – Friday, 8:00 AM – 5:00 PM
+                </Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.submitBtn}
+                onPress={handleBookComplaint}
+                activeOpacity={0.85}
+              >
+                <Calendar size={17} color="#FFFFFF" strokeWidth={2} />
+                <Text style={styles.submitBtnText}>Book an Appointment</Text>
+              </TouchableOpacity>
+            </View>
+          ) : currentQ.type === 'text_input' ? (
             <View style={styles.inputGroup}>
 
               {/* ✅ Gold 4px accent on input card */}
@@ -589,4 +685,20 @@ const styles = StyleSheet.create({
     color: NAVY,
     fontWeight: '600',
   },
+  bookingInfoGroup: { gap: 14 },
+  bookingInfoDesc: {
+    fontSize: 15, color: '#4A5270', lineHeight: 22,
+  },
+  requirementsCard: {
+    backgroundColor: '#FFFFFF', borderRadius: 10, padding: 16,
+    borderWidth: 1, borderColor: '#E4E9F2', gap: 4,
+  },
+  requirementRow:  { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  requirementDot:  { width: 7, height: 7, borderRadius: 4, backgroundColor: NAVY, marginTop: 6, flexShrink: 0 },
+  requirementText: { fontSize: 14, color: '#1A2340', flex: 1, lineHeight: 21 },
+  officeHoursRow:  {
+    backgroundColor: '#FFFFFF', borderRadius: 10, padding: 14,
+    borderWidth: 1, borderColor: '#E4E9F2',
+  },
+  officeHoursText: { fontSize: 13, color: '#8A94A6' },
 });

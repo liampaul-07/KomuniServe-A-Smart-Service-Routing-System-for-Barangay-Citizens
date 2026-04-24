@@ -11,7 +11,8 @@ const PRIORITY_CONFIG = {
 };
 
 export default function ConfirmationScreen({ route, navigation }) {
-  const { category, facility, date, time, priority } = route.params;
+  const { mode = 'appointment', category, subType, facility, date, time, priority } = route.params;
+  const isReport = mode === 'report';
   const p = PRIORITY_CONFIG[priority];
 
   return (
@@ -22,13 +23,20 @@ export default function ConfirmationScreen({ route, navigation }) {
           <Text style={styles.iconText}>✓</Text>
         </View>
 
-        <Text style={styles.title}>Appointment Submitted</Text>
+        <Text style={styles.title}>
+          {isReport ? 'Report Submitted' : 'Appointment Submitted'}
+        </Text>
         <Text style={styles.subtitle}>
-          Your appointment request has been submitted and is pending approval from barangay staff.
+          {isReport
+            ? 'Your report has been successfully submitted to the barangay. Staff will review and act on your concern.'
+            : 'Your appointment request has been submitted and is pending approval from barangay staff.'}
         </Text>
 
         <View style={styles.detailsCard}>
           <Row label="Service"  value={category} />
+          {subType && (
+            <Row label="Sub-Type" value={subType.replace(/_/g, ' ')} />
+          )}
           <Row label="Facility" value={facility}  />
           <Row label="Date"     value={date}      />
           <Row label="Time"     value={time}      />
@@ -56,12 +64,14 @@ export default function ConfirmationScreen({ route, navigation }) {
           <Text style={styles.primaryBtnText}>Back to Home</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.secondaryBtn}
-          onPress={() => navigation.navigate('AppointmentStatus')}
-        >
-          <Text style={styles.secondaryBtnText}>View My Appointments</Text>
-        </TouchableOpacity>
+        {!isReport && (
+          <TouchableOpacity
+            style={styles.secondaryBtn}
+            onPress={() => navigation.navigate('AppointmentStatus')}
+          >
+            <Text style={styles.secondaryBtnText}>View My Appointments</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </SafeAreaView>
   );

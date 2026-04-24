@@ -10,6 +10,7 @@ import {
   FileText,
   ChevronRight,
 } from 'lucide-react-native';
+import { supabase } from '../services/supabase';
 
 // ─── PRIORITY CONFIG — no emojis ─────────────────────────────
 const PRIORITY_CONFIG = {
@@ -22,6 +23,7 @@ const ACTION_LABELS = {
   SCHEDULE:      'Book an Appointment',
   WALK_IN:       'Proceed to Barangay Hall',
   SUBMIT_REPORT: 'Submit Report',
+  COMPLAINT_OPTIONS: 'Report and Make Appointment',
 };
 
 // ─── EGOVPH CUSTOM SPINNER ───────────────────────────────────
@@ -86,36 +88,75 @@ function HeaderLogo() {
 
 // ─── MAIN SCREEN ─────────────────────────────────────────────
 export default function ResultScreen({ route, navigation }) {
-  const { result, category } = route.params;
+  const { result, category, subType, urgency, description } = route.params;
   const config = PRIORITY_CONFIG[result.priority];
 
-  const handleAction = () => {
-    if (result.action === 'SCHEDULE') {
-      navigation.navigate('BookAppointment', { result, category });
+  const handleSchedule = () => {
+    navigation.navigate('BookAppointment', { result, category, subType, urgency, description });
+  };
 
-    } else if (result.action === 'SUBMIT_REPORT') {
-      // TODO: Save report to Supabase before showing confirmation:
-      // await supabase.from('requests').insert({
-      //   user_id:           currentUser.id,
-      //   service_requested: category,
-      //   priority:          result.priority,
-      //   intake_answers:    result,
-      //   status:            'Pending',
-      //   description:       result.instructions,
-      //   submitted_at:      new Date().toISOString(),
-      // });
-      Alert.alert(
-        'Report Submitted',
-        'Your report has been logged. Barangay staff will be notified.',
-        [{ text: 'OK', onPress: () => navigation.navigate('Decision') }]
-      );
+  const handleSubmitReport = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { Alert.alert('Error', 'You must be logged in.'); return; }
 
-    } else {
-      // WALK_IN — no booking needed, just go back to hub
-      navigation.navigate('Decision');
+      const { error } = await supabase.from('requests').insert({
+        user_id:           session.user.id,
+        category,
+        service_requested: subType ?? category,
+        priority:          result.priority,
+        intake_answers:    { ...result, subType, urgency, category, description },
+        status:            'Pending',
+        description:       description ?? '',
+        submitted_at:      new Date().toISOString(),
+      });
+
+      if (error) throw error;
+
+      navigation.replace('Confirmation', {
+        mode:     'report',
+        category,
+        subType,
+        facility: result.facility,
+        priority: result.priority,
+      });
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'Failed to submit report. Please try again.');
     }
   };
 
+  const handleMakeReportOnly = async () => {
+    try {
+      const { data: {session} } = await supabase.auth.getSession();
+      if (!session) { Alert.alert('Error', 'You must be logged in.'); return; }
+      const { error } = await supabase.from('requests').insert({
+        user_id: session.user.id,
+        category: category,
+        service_requested: subType ?? category,
+        priority: result.priority,
+        intake_answers: {
+          ...result,
+          subType,
+          urgency,
+          category,
+          description,
+        },
+        status: 'Pending',
+        description: description ?? '',
+        submitted_at: new Date().toISOString(),
+      });
+        
+      if (error) throw error;
+
+      Alert.alert('Report Submitted', 'Your report has been submitted to the barangay.', [
+        { text: 'OK', onPress: () => navigation.popToTop() },
+      ]);
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'Failed to submit report. Please try again.')
+    }
+  };
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#0038A8" barStyle="light-content" />
@@ -172,27 +213,102 @@ export default function ResultScreen({ route, navigation }) {
           <Text style={styles.instructionsText}>{result.instructions}</Text>
         </View>
 
-        {/* Primary action button */}
-        <TouchableOpacity
-          style={styles.actionBtn}
-          onPress={handleAction}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.actionBtnText}>
-            {ACTION_LABELS[result.action] ?? 'Proceed'}
-          </Text>
-          <ChevronRight size={18} color="#FFFFFF" strokeWidth={2.5} />
-        </TouchableOpacity>
+        {/* SCHEDULE — Documents & Medical */}
+      {result.action === 'SCHEDULE' && (
+        <>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={handleSchedule}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.actionBtnText}>Book an Appointment</Text>
+            <ChevronRight size={18} color="#FFFFFF" strokeWidth={2.5} />
+          </TouchableOpacity>
 
-        {/* Start over */}
-        <TouchableOpacity
-          style={styles.secondaryBtn}
-          onPress={() => navigation.navigate('GuidedPath')}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.secondaryBtnText}>Start Over</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.secondaryBtn}
+            onPress={() => navigation.navigate('Decision')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.secondaryBtnText}>Start Over</Text>
+          </TouchableOpacity>
+        </>
+      )}
 
+      {/* WALK_IN */}
+      {result.action === 'WALK_IN' && (
+        <>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => navigation.navigate('Decision')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.actionBtnText}>Proceed to Barangay Hall</Text>
+            <ChevronRight size={18} color="#FFFFFF" strokeWidth={2.5} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.secondaryBtn}
+            onPress={() => navigation.navigate('Decision')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.secondaryBtnText}>Start Over</Text>
+          </TouchableOpacity>
+        </>
+      )}
+
+      {/* SUBMIT_REPORT — Noise, Infrastructure */}
+      {result.action === 'SUBMIT_REPORT' && (
+        <>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={handleSubmitReport}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.actionBtnText}>Submit Report</Text>
+            <ChevronRight size={18} color="#FFFFFF" strokeWidth={2.5} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.secondaryBtn}
+            onPress={() => navigation.navigate('Decision')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.secondaryBtnText}>Start Over</Text>
+          </TouchableOpacity>
+        </>
+      )}
+
+      {/* COMPLAINT_OPTIONS — Domestic, Physical Threat, Property Dispute, Other */}
+      {result.action === 'COMPLAINT_OPTIONS' && (
+        <>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={handleSchedule}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.actionBtnText}>Report and Make Appointment</Text>
+            <ChevronRight size={18} color="#FFFFFF" strokeWidth={2.5} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionBtn, { backgroundColor: '#455A64', marginTop: 10 }]}
+            onPress={handleSubmitReport}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.actionBtnText}>Report Only</Text>
+            <ChevronRight size={18} color="#FFFFFF" strokeWidth={2.5} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.secondaryBtn}
+            onPress={() => navigation.navigate('Decision')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.secondaryBtnText}>Start Over</Text>
+          </TouchableOpacity>
+        </>
+      )}
       </View>
     </SafeAreaView>
   );

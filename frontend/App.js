@@ -15,7 +15,7 @@ import AppointmentStatusScreen  from './src/screens/AppointmentStatusScreen';
 import DirectAccessScreen       from './src/screens/DirectAccessScreen';
 import ServiceDetailScreen      from './src/screens/ServiceDetailScreen';
 import AdminDashboardScreen     from './src/screens/AdminDashboardScreen';
-// import RequestDetailScreen      from './src/screens/RequestDetailScreen';
+import RequestDetailScreen      from './src/screens/RequestDetailScreen';
 import SearchScreen             from './src/screens/SearchScreen';
 
 const Stack = createStackNavigator();
@@ -39,7 +39,7 @@ export default function App() {
         <Stack.Screen name="DirectAccess"       component={DirectAccessScreen}      />
         <Stack.Screen name="ServiceDetail"      component={ServiceDetailScreen}     />
         <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
-        {/* <Stack.Screen name="RequestDetail"  component={RequestDetailScreen}  /> */}
+        <Stack.Screen name="RequestDetail"  component={RequestDetailScreen}  />
         <Stack.Screen name="Search"         component={SearchScreen}         /> 
       </Stack.Navigator>
     </NavigationContainer>

@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
-  ScrollView, Platform, StatusBar, Alert
+  ScrollView, Platform, StatusBar, Alert, ActivityIndicator
 } from 'react-native';
+import { 
+  ArrowLeft, MapPin, CalendarDays, Clock, 
+  CheckCircle2, AlertCircle, CalendarCheck 
+} from 'lucide-react-native';
 import { supabase } from '../services/supabase';
 
 // ─── HELPERS ─────────────────────────────────────────────────
@@ -47,7 +51,6 @@ function formatTimeForDisplay(dbTime) {
   return `${displayHour}:${minute} ${ampm}`;
 }
 
-
 function formatTimeForDB(displayTime) {
   const [time, ampm] = displayTime.split(' ');
   const [hourStr, minuteStr] = time.split(':');
@@ -57,15 +60,16 @@ function formatTimeForDB(displayTime) {
   return `${String(hour).padStart(2, '0')}:${minuteStr}:00`;
 }
 
+// Updated Configuration Colors to match theme
 const PRIORITY_CONFIG = {
-  HIGH:   { color: '#C62828', bg: '#FFEBEE', label: '🚨 High Priority'   },
-  MEDIUM: { color: '#E65100', bg: '#FFF8E1', label: '⚠️ Medium Priority' },
-  LOW:    { color: '#2E7D32', bg: '#E8F5E9', label: '✅ Low Priority'    },
+  HIGH:   { color: '#B71C1C', bg: '#FDECEA', border: '#EF9A9A', label: 'High Priority'   },
+  MEDIUM: { color: '#C35A00', bg: '#FFF3E0', border: '#FFB347', label: 'Medium Priority' },
+  LOW:    { color: '#1E6B1E', bg: '#EBF5EB', border: '#81C784', label: 'Low Priority'    },
 };
 
 export default function BookAppointmentScreen({ route, navigation }) {
   const { result, category, subType, urgency, description } = route.params;
-  const priority = PRIORITY_CONFIG[result.priority];
+  const priority = PRIORITY_CONFIG[result.priority] || PRIORITY_CONFIG.LOW;
 
   const [selectedDate, setSelectedDate] = useState(WEEK_DATES[0]);
   const [selectedTime, setSelectedTime] = useState(null);
@@ -219,30 +223,45 @@ export default function BookAppointmentScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar backgroundColor="#0038A8" barStyle="light-content" />
+      
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>← Back</Text>
+          <ArrowLeft size={24} color="#FFFFFF" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Book Appointment</Text>
-        <View style={{ width: 60 }} />
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerLabel}>BOOKING</Text>
+          <Text style={styles.headerTitle} numberOfLines={1}>Select Date & Time</Text>
+        </View>
+        <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
         {/* Booking summary card */}
         <View style={styles.summaryCard}>
           <Text style={styles.summaryCategory}>{category}</Text>
-          <Text style={styles.summaryFacility}>📍 {result.facility}</Text>
-          <View style={[styles.priorityBadge, { backgroundColor: priority.bg }]}>
-            <Text style={[styles.priorityText, { color: priority.color }]}>
+          
+          <View style={styles.metaRowItem}>
+            <MapPin size={16} color="#64748B" />
+            <Text style={styles.summaryFacility}>{result.facility}</Text>
+          </View>
+          
+          <View style={[styles.priorityPill, { backgroundColor: priority.bg, borderColor: priority.border }]}>
+            <View style={[styles.priorityDot, { backgroundColor: priority.color }]} />
+            <Text style={[styles.priorityPillText, { color: priority.color }]}>
               {priority.label}
             </Text>
           </View>
         </View>
 
         {/* Date selection */}
-        <Text style={styles.sectionLabel}>Select a date</Text>
+        <View style={styles.sectionHeader}>
+          <CalendarDays size={18} color="#0038A8" />
+          <Text style={styles.sectionLabel}>Select Date</Text>
+        </View>
+        
         <View style={styles.dateStripWrapper}>
           <ScrollView
             horizontal
@@ -263,6 +282,7 @@ export default function BookAppointmentScreen({ route, navigation }) {
                   ]}
                   onPress={() => handleDateSelect(date)}
                   activeOpacity={0.7}
+                  disabled={!hasSlots}
                 >
                   <Text style={[styles.dateDayLabel, isSelected && styles.dateLabelSelected]}>
                     {formatDayLabel(date)}
@@ -284,14 +304,20 @@ export default function BookAppointmentScreen({ route, navigation }) {
         <Text style={styles.selectedDateText}>{formatFullDate(selectedDate)}</Text>
 
         {/* Time slots */}
-        <Text style={styles.sectionLabel}>Select a time slot</Text>
+        <View style={styles.sectionHeader}>
+          <Clock size={18} color="#0038A8" />
+          <Text style={styles.sectionLabel}>Select Time Slot</Text>
+        </View>
+
         {loadingSlots ? (
           <View style={styles.noSlotsBox}>
+            <ActivityIndicator size="small" color="#0038A8" />
             <Text style={styles.noSlotsText}>Loading slots...</Text>
           </View>
         ) : availableSlots.length === 0 ? (
           <View style={styles.noSlotsBox}>
-            <Text style={styles.noSlotsText}>No available slots on this date.</Text>
+            <AlertCircle size={24} color="#94A3B8" style={{ marginBottom: 8 }} />
+            <Text style={styles.noSlotsText}>No available slots</Text>
             <Text style={styles.noSlotsSubText}>Please select a different date.</Text>
           </View>
         ) : (
@@ -317,8 +343,9 @@ export default function BookAppointmentScreen({ route, navigation }) {
         {/* Selected summary before confirm */}
         {selectedTime && (
           <View style={styles.selectionSummary}>
+            <CheckCircle2 size={20} color="#0038A8" style={{ marginRight: 8 }} />
             <Text style={styles.selectionSummaryText}>
-              📅 {formatFullDate(selectedDate)} at {selectedTime}
+              {formatFullDate(selectedDate)} at {selectedTime}
             </Text>
           </View>
         )}
@@ -334,7 +361,13 @@ export default function BookAppointmentScreen({ route, navigation }) {
           ]}
           onPress={handleConfirm}
           disabled={!selectedTime || isSubmitting}
+          activeOpacity={0.85}
         >
+          {isSubmitting ? (
+            <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 8 }} />
+          ) : (
+            <CalendarCheck size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+          )}
           <Text style={styles.confirmBtnText}>
             {isSubmitting ? 'Submitting...' : 'Confirm Appointment'}
           </Text>
@@ -344,139 +377,303 @@ export default function BookAppointmentScreen({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F6FA' },
+// ─── STYLES ──────────────────────────────────────────────────
+const NAVY = '#0038A8';
+const BACKGROUND = '#F8FAFC';
+const WHITE = '#FFFFFF';
 
+const styles = StyleSheet.create({
+  container: { 
+    flex: 1, 
+    backgroundColor: BACKGROUND 
+  },
+  
   // Header
   header: {
+    backgroundColor: NAVY,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 10 : 16,
-    paddingBottom: 12,
-    backgroundColor: '#0047AB',
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) + 12 : 12,
+    paddingBottom: 20,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
   },
-  backBtn:       { padding: 4 },
-  backBtnText:   { color: '#FFF', fontWeight: 'bold', fontSize: 15 },
-  headerTitle:   { color: '#FFF', fontWeight: 'bold', fontSize: 17 },
+  backBtn: { 
+    padding: 8,
+    marginLeft: -8,
+  },
+  headerCenter: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  headerLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  headerTitle: {
+    color: WHITE,
+    fontSize: 16,
+    fontWeight: '700',
+  },
 
-  content: { padding: 20, paddingBottom: 40 },
+  content: { 
+    padding: 20, 
+    paddingBottom: 40 
+  },
 
   // Summary card
   summaryCard: {
-    backgroundColor: '#FFF',
+    backgroundColor: WHITE,
     borderRadius: 16,
-    padding: 18,
+    padding: 20,
     marginBottom: 24,
-    elevation: 1,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    elevation: 2,
     shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
   },
-  summaryCategory: { fontSize: 20, fontWeight: '800', color: '#1A1A2E', marginBottom: 6 },
-  summaryFacility: { fontSize: 14, color: '#555', marginBottom: 12 },
-  priorityBadge:   { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 10 },
-  priorityText:    { fontSize: 13, fontWeight: '700' },
+  summaryCategory: { 
+    fontSize: 20, 
+    fontWeight: '800', 
+    color: '#0F172A', 
+    marginBottom: 8 
+  },
+  metaRowItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 6,
+  },
+  summaryFacility: { 
+    fontSize: 14, 
+    color: '#64748B', 
+    fontWeight: '500'
+  },
+  priorityPill: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  priorityDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
+  },
+  priorityPillText: {
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
 
-  // Section labels
+  // Section Headers
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
+  },
   sectionLabel: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
-    color: '#888',
+    color: '#475569',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
-    marginBottom: 12,
   },
 
   // Date strip
-  dateStripWrapper: { marginBottom: 10 },
-  dateStrip:        { gap: 8, paddingBottom: 4 },
+  dateStripWrapper: { 
+    marginBottom: 8 
+  },
+  dateStrip: { 
+    gap: 10, 
+    paddingBottom: 4 
+  },
   dateChip: {
     flexShrink: 0,
-    width: 52,
+    width: 58,
     alignItems: 'center',
-    paddingVertical: 8,
-    borderRadius: 12,
-    backgroundColor: '#FFF',
-    borderWidth: 1.5,
-    borderColor: '#EEE',
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: WHITE,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   dateChipSelected: {
-    backgroundColor: '#0047AB',
-    borderColor: '#0047AB',
+    backgroundColor: NAVY,
+    borderColor: NAVY,
+    shadowColor: NAVY,
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
   },
-  dateChipDisabled: { backgroundColor: '#F5F5F5', borderColor: '#F0F0F0' },
-  dateDayLabel:      { fontSize: 11, color: '#888', fontWeight: '600', textTransform: 'uppercase' },
-  dateDayNumber:     { fontSize: 18, fontWeight: '800', color: '#333', marginTop: 2 },
-  dateLabelSelected: { color: '#FFF' },
-  todayDot:          { width: 5, height: 5, borderRadius: 3, backgroundColor: '#0047AB', marginTop: 4 },
-  todayDotSelected:  { backgroundColor: '#FFF' },
-  noSlotMark:        { fontSize: 11, color: '#CCC', marginTop: 2 },
+  dateChipDisabled: { 
+    backgroundColor: '#F8FAFC', 
+    borderColor: '#F1F5F9' 
+  },
+  dateDayLabel: { 
+    fontSize: 11, 
+    color: '#64748B', 
+    fontWeight: '700', 
+    textTransform: 'uppercase' 
+  },
+  dateDayNumber: { 
+    fontSize: 20, 
+    fontWeight: '800', 
+    color: '#1E293B', 
+    marginTop: 2 
+  },
+  dateLabelSelected: { 
+    color: WHITE 
+  },
+  todayDot: { 
+    width: 5, 
+    height: 5, 
+    borderRadius: 3, 
+    backgroundColor: NAVY, 
+    marginTop: 6 
+  },
+  todayDotSelected: { 
+    backgroundColor: WHITE 
+  },
+  noSlotMark: { 
+    fontSize: 11, 
+    color: '#CBD5E1', 
+    marginTop: 2 
+  },
 
   selectedDateText: {
-    fontSize: 14, fontWeight: '600', color: '#444',
+    fontSize: 14, 
+    fontWeight: '600', 
+    color: '#64748B',
     marginBottom: 24,
+    marginLeft: 2,
   },
 
   // Time grid
   timeGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 12,
     marginBottom: 24,
   },
   timeChip: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    flex: 1,
+    minWidth: '45%',
+    alignItems: 'center',
+    paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: '#FFF',
-    borderWidth: 1.5,
-    borderColor: '#EEE',
-    elevation: 1,
+    backgroundColor: WHITE,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  timeChipSelected:     { backgroundColor: '#0047AB', borderColor: '#0047AB' },
-  timeChipText:         { fontSize: 15, fontWeight: '600', color: '#333' },
-  timeChipTextSelected: { color: '#FFF' },
+  timeChipSelected: { 
+    backgroundColor: NAVY, 
+    borderColor: NAVY,
+    shadowColor: NAVY,
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  timeChipText: { 
+    fontSize: 15, 
+    fontWeight: '600', 
+    color: '#334155' 
+  },
+  timeChipTextSelected: { 
+    color: WHITE 
+  },
 
   // No slots
   noSlotsBox: {
     alignItems: 'center',
-    paddingVertical: 30,
-    backgroundColor: '#FFF',
-    borderRadius: 14,
+    justifyContent: 'center',
+    paddingVertical: 32,
+    backgroundColor: WHITE,
+    borderRadius: 16,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: '#EEE',
+    borderColor: '#E2E8F0',
+    borderStyle: 'dashed',
   },
-  noSlotsText:    { fontSize: 15, fontWeight: '600', color: '#999' },
-  noSlotsSubText: { fontSize: 13, color: '#BBB', marginTop: 4 },
+  noSlotsText: { 
+    fontSize: 15, 
+    fontWeight: '600', 
+    color: '#94A3B8',
+    marginTop: 8,
+  },
+  noSlotsSubText: { 
+    fontSize: 13, 
+    color: '#CBD5E1', 
+    marginTop: 4 
+  },
 
   // Selection summary
   selectionSummary: {
-    backgroundColor: '#EEF3FF',
+    flexDirection: 'row',
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
     borderRadius: 12,
-    padding: 14,
+    padding: 16,
     alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: 8,
   },
-  selectionSummaryText: { fontSize: 14, fontWeight: '600', color: '#0047AB' },
+  selectionSummaryText: { 
+    fontSize: 14, 
+    fontWeight: '700', 
+    color: NAVY 
+  },
 
   // Footer
   footer: {
-    padding: 16,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 16,
-    backgroundColor: '#FFF',
+    padding: 20,
+    paddingBottom: Platform.OS === 'ios' ? 32 : 20,
+    backgroundColor: WHITE,
     borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
+    borderTopColor: '#E2E8F0',
   },
   confirmBtn: {
-    backgroundColor: '#0047AB',
-    padding: 18,
+    flexDirection: 'row',
+    height: 56,
+    backgroundColor: NAVY,
     borderRadius: 14,
     alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: NAVY,
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
   },
-  confirmBtnDisabled: { backgroundColor: '#B0C4DE' },
-  confirmBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 17 },
+  confirmBtnDisabled: { 
+    backgroundColor: '#94A3B8',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  confirmBtnText: { 
+    color: WHITE, 
+    fontWeight: '700', 
+    fontSize: 16 
+  },
 });

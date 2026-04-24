@@ -1,66 +1,89 @@
 import React from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  SafeAreaView, Platform, StatusBar
+  SafeAreaView, Platform, StatusBar, ScrollView
 } from 'react-native';
+import { CheckCircle2, Home, CalendarSearch, Info } from 'lucide-react-native';
 
 const PRIORITY_CONFIG = {
-  HIGH:   { color: '#C62828', bg: '#FFEBEE', label: '🚨 High Priority'   },
-  MEDIUM: { color: '#E65100', bg: '#FFF8E1', label: '⚠️ Medium Priority' },
-  LOW:    { color: '#2E7D32', bg: '#E8F5E9', label: '✅ Low Priority'    },
+  HIGH:   { color: '#B71C1C', bg: '#FDECEA', border: '#EF9A9A', label: 'High Priority'   },
+  MEDIUM: { color: '#C35A00', bg: '#FFF3E0', border: '#FFB347', label: 'Medium Priority' },
+  LOW:    { color: '#1E6B1E', bg: '#EBF5EB', border: '#81C784', label: 'Low Priority'    },
 };
 
 export default function ConfirmationScreen({ route, navigation }) {
   const { mode = 'appointment', category, subType, facility, date, time, priority } = route.params;
   const isReport = mode === 'report';
-  const p = PRIORITY_CONFIG[priority];
+  const p = PRIORITY_CONFIG[priority] || PRIORITY_CONFIG.LOW;
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+      <StatusBar backgroundColor="#F8FAFC" barStyle="dark-content" />
+      
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.content}>
+          
+          {/* Success Animation Area */}
+          <View style={styles.iconWrapper}>
+            <View style={styles.iconCircle}>
+              <CheckCircle2 size={48} color="#FFFFFF" strokeWidth={3} />
+            </View>
+            <View style={styles.pulseCircle} />
+          </View>
 
-        <View style={styles.iconCircle}>
-          <Text style={styles.iconText}>✓</Text>
-        </View>
+          <Text style={styles.title}>
+            {isReport ? 'Report Submitted' : 'Request Received'}
+          </Text>
+          <Text style={styles.subtitle}>
+            {isReport
+              ? 'Your report has been successfully submitted to the barangay. Staff will review and act on your concern shortly.'
+              : 'Your appointment request has been submitted and is currently pending approval from barangay staff.'}
+          </Text>
 
-        <Text style={styles.title}>
-          {isReport ? 'Report Submitted' : 'Appointment Submitted'}
-        </Text>
-        <Text style={styles.subtitle}>
-          {isReport
-            ? 'Your report has been successfully submitted to the barangay. Staff will review and act on your concern.'
-            : 'Your appointment request has been submitted and is pending approval from barangay staff.'}
-        </Text>
-
-        <View style={styles.detailsCard}>
-          <Row label="Service"  value={category} />
-          {subType && (
-            <Row label="Sub-Type" value={subType.replace(/_/g, ' ')} />
-          )}
-          <Row label="Facility" value={facility}  />
-          <Row label="Date"     value={date}      />
-          <Row label="Time"     value={time}      />
-          <View style={styles.rowLast}>
-            <Text style={styles.rowLabel}>Priority</Text>
-            <View style={[styles.priorityBadge, { backgroundColor: p.bg }]}>
-              <Text style={[styles.priorityText, { color: p.color }]}>{p.label}</Text>
+          {/* Details Card */}
+          <View style={styles.detailsCard}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardHeaderText}>DETAILS SUMMARY</Text>
+            </View>
+            
+            <View style={styles.cardBody}>
+              <Row label="Service Category" value={category} />
+              {subType && (
+                <Row label="Request Type" value={subType.replace(/_/g, ' ')} />
+              )}
+              <Row label="Target Facility" value={facility}  />
+              <Row label="Schedule Date"   value={date}      />
+              <Row label="Schedule Time"   value={time}      />
+              
+              <View style={styles.rowLast}>
+                <Text style={styles.rowLabel}>Priority Level</Text>
+                <View style={[styles.priorityPill, { backgroundColor: p.bg, borderColor: p.border }]}>
+                  <Text style={[styles.priorityPillText, { color: p.color }]}>
+                    {p.label}
+                  </Text>
+                </View>
+              </View>
             </View>
           </View>
+
+          {/* Info Note */}
+          <View style={styles.statusNote}>
+            <Info size={18} color="#0038A8" style={{ marginRight: 10 }} />
+            <Text style={styles.statusNoteText}>
+              You will receive a notification once the staff updates the status of your request.
+            </Text>
+          </View>
         </View>
+      </ScrollView>
 
-        <View style={styles.statusNote}>
-          <Text style={styles.statusNoteText}>
-            You will be notified once the barangay staff approves or rejects your appointment.
-          </Text>
-        </View>
-
-      </View>
-
+      {/* Footer Actions */}
       <View style={styles.footer}>
         <TouchableOpacity
           style={styles.primaryBtn}
           onPress={() => navigation.replace('Decision')}
+          activeOpacity={0.8}
         >
+          <Home size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
           <Text style={styles.primaryBtnText}>Back to Home</Text>
         </TouchableOpacity>
 
@@ -68,7 +91,9 @@ export default function ConfirmationScreen({ route, navigation }) {
           <TouchableOpacity
             style={styles.secondaryBtn}
             onPress={() => navigation.navigate('AppointmentStatus')}
+            activeOpacity={0.7}
           >
+            <CalendarSearch size={20} color="#0038A8" style={{ marginRight: 8 }} />
             <Text style={styles.secondaryBtnText}>View My Appointments</Text>
           </TouchableOpacity>
         )}
@@ -86,70 +111,193 @@ function Row({ label, value }) {
   );
 }
 
+// ─── STYLES ──────────────────────────────────────────────────
+const NAVY = '#0038A8';
+const BACKGROUND = '#F8FAFC';
+const WHITE = '#FFFFFF';
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F6FA' },
+  container: { flex: 1, backgroundColor: BACKGROUND },
+  scrollContent: { flexGrow: 1 },
   content: {
-    flex: 1, padding: 28,
-    alignItems: 'center', justifyContent: 'center',
+    flex: 1, 
+    padding: 24,
+    alignItems: 'center', 
+    justifyContent: 'center',
+  },
+  
+  // Icon & Animation
+  iconWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
   },
   iconCircle: {
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: '#0047AB',
-    justifyContent: 'center', alignItems: 'center', marginBottom: 20,
+    width: 84, 
+    height: 84, 
+    borderRadius: 42,
+    backgroundColor: '#10B981', // Success Green
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    zIndex: 2,
+    elevation: 4,
+    shadowColor: '#10B981',
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
   },
-  iconText: { color: '#FFF', fontSize: 36, fontWeight: 'bold' },
+  pulseCircle: {
+    position: 'absolute',
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: '#D1FAE5',
+    zIndex: 1,
+  },
+
   title: {
-    fontSize: 24, fontWeight: '800', color: '#1A1A2E',
-    marginBottom: 10, textAlign: 'center',
+    fontSize: 26, 
+    fontWeight: '800', 
+    color: '#0F172A',
+    marginBottom: 12, 
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 15, color: '#777', textAlign: 'center',
-    lineHeight: 22, marginBottom: 28, paddingHorizontal: 10,
+    fontSize: 15, 
+    color: '#64748B', 
+    textAlign: 'center',
+    lineHeight: 22, 
+    marginBottom: 32, 
+    paddingHorizontal: 15,
   },
+
+  // Details Card
   detailsCard: {
-    width: '100%', backgroundColor: '#FFF',
-    borderRadius: 16, paddingHorizontal: 16, marginBottom: 16,
-    elevation: 1, shadowColor: '#000', shadowOpacity: 0.04,
-    shadowRadius: 4, shadowOffset: { width: 0, height: 2 },
+    width: '100%', 
+    backgroundColor: WHITE,
+    borderRadius: 20, 
+    overflow: 'hidden',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    elevation: 2, 
+    shadowColor: '#000', 
+    shadowOpacity: 0.04,
+    shadowRadius: 8, 
+    shadowOffset: { width: 0, height: 4 },
+  },
+  cardHeader: {
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  cardHeaderText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#94A3B8',
+    letterSpacing: 1.5,
+  },
+  cardBody: {
+    paddingHorizontal: 20,
   },
   row: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingVertical: 13, borderBottomWidth: 1, borderBottomColor: '#F5F5F5',
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center',
+    paddingVertical: 15, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#F1F5F9',
   },
   rowLast: {
-    flexDirection: 'row', justifyContent: 'space-between',
-    alignItems: 'center', paddingVertical: 13,
+    flexDirection: 'row', 
+    justifyContent: 'space-between',
+    alignItems: 'center', 
+    paddingVertical: 15,
   },
-  rowLabel: { fontSize: 14, color: '#999' },
+  rowLabel: { 
+    fontSize: 13, 
+    fontWeight: '600',
+    color: '#94A3B8' 
+  },
   rowValue: {
-    fontSize: 14, fontWeight: '600', color: '#333',
-    flexShrink: 1, textAlign: 'right', marginLeft: 16,
+    fontSize: 14, 
+    fontWeight: '700', 
+    color: '#1E293B',
+    flexShrink: 1, 
+    textAlign: 'right', 
+    marginLeft: 16,
   },
-  priorityBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
-  priorityText:  { fontSize: 12, fontWeight: '700' },
+  priorityPill: { 
+    paddingHorizontal: 12, 
+    paddingVertical: 6, 
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  priorityPillText: { 
+    fontSize: 12, 
+    fontWeight: '800',
+    textTransform: 'uppercase'
+  },
+
+  // Note box
   statusNote: {
-    width: '100%', backgroundColor: '#EEF3FF',
-    borderRadius: 12, padding: 14,
+    flexDirection: 'row',
+    width: '100%', 
+    backgroundColor: '#EFF6FF',
+    borderRadius: 16, 
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
   },
   statusNoteText: {
-    fontSize: 13, color: '#0047AB',
-    textAlign: 'center', lineHeight: 20,
+    flex: 1,
+    fontSize: 13, 
+    color: NAVY,
+    lineHeight: 18,
+    fontWeight: '500',
   },
+
+  // Footer
   footer: {
-    padding: 16,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 16,
-    backgroundColor: '#FFF',
-    borderTopWidth: 1, borderTopColor: '#F0F0F0',
-    gap: 10,
+    padding: 20,
+    paddingBottom: Platform.OS === 'ios' ? 32 : 20,
+    backgroundColor: WHITE,
+    borderTopWidth: 1, 
+    borderTopColor: '#E2E8F0',
+    gap: 12,
   },
   primaryBtn: {
-    backgroundColor: '#0047AB',
-    padding: 18, borderRadius: 14, alignItems: 'center',
+    flexDirection: 'row',
+    backgroundColor: NAVY,
+    height: 56,
+    borderRadius: 16, 
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: NAVY,
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
   },
-  primaryBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 17 },
+  primaryBtnText: { 
+    color: WHITE, 
+    fontWeight: '700', 
+    fontSize: 16 
+  },
   secondaryBtn: {
-    borderWidth: 1.5, borderColor: '#0047AB',
-    padding: 16, borderRadius: 14, alignItems: 'center',
+    flexDirection: 'row',
+    borderWidth: 2, 
+    borderColor: NAVY,
+    height: 54, 
+    borderRadius: 16, 
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  secondaryBtnText: { color: '#0047AB', fontWeight: '700', fontSize: 15 },
+  secondaryBtnText: { 
+    color: NAVY, 
+    fontWeight: '700', 
+    fontSize: 15 
+  },
 });

@@ -1,35 +1,39 @@
 import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
-  ScrollView, Platform, StatusBar, TextInput, Alert
+  ScrollView, Platform, StatusBar, TextInput, Alert, KeyboardAvoidingView
 } from 'react-native';
-import { MessageSquare, Send } from 'lucide-react-native';
+import { 
+  MessageSquare, Send, ArrowLeft, MapPin, 
+  Clock, FileText, ChevronRight, CheckCircle2 
+} from 'lucide-react-native';
 import { processRequest } from '../services/RuleEngine';
 import { supabase } from '../services/supabase';
 
+// ─── CONFIGURATIONS ──────────────────────────────────────────
 const ACTION_CONFIG = {
-  SCHEDULE:     { label: 'Book an Appointment', subLabel: 'Pick a date and time slot.', color: '#0047AB' },
-  WALK_IN:      { label: 'Walk In', subLabel: 'No appointment needed. Go directly to the facility.', color: '#2E7D32' },
-  SUBMIT_REPORT:{ label: 'Submit Report', subLabel: 'Provide details and submit your report.', color: '#E65100' },
+  SCHEDULE:     { label: 'Book an Appointment', subLabel: 'Pick a date and time slot.', color: '#0038A8' },
+  WALK_IN:      { label: 'Walk In', subLabel: 'No appointment needed. Go directly to the facility.', color: '#10B981' },
+  SUBMIT_REPORT:{ label: 'Submit Report', subLabel: 'Provide details and submit your report.', color: '#F59E0B' },
 };
 
 const CATEGORY_COLORS = {
-  Medical:   { bg: '#FFEBEE', text: '#C62828' },
-  Documents: { bg: '#E8F5E9', text: '#2E7D32' },
-  Complaint: { bg: '#FFF8E1', text: '#E65100' },
+  Medical:   { bg: '#FEE2E2', text: '#DC2626' },
+  Documents: { bg: '#D1FAE5', text: '#059669' },
+  Complaint: { bg: '#FEF3C7', text: '#D97706' },
 };
 
 const PRIORITY_CONFIG = {
-  HIGH:   { color: '#C62828', bg: '#FFEBEE', label: '🚨 High Priority'   },
-  MEDIUM: { color: '#E65100', bg: '#FFF8E1', label: '⚠️ Medium Priority' },
-  LOW:    { color: '#2E7D32', bg: '#E8F5E9', label: '✅ Low Priority'    },
+  HIGH:   { color: '#B71C1C', bg: '#FDECEA', border: '#EF9A9A', label: 'High Priority'   },
+  MEDIUM: { color: '#C35A00', bg: '#FFF3E0', border: '#FFB347', label: 'Medium Priority' },
+  LOW:    { color: '#1E6B1E', bg: '#EBF5EB', border: '#81C784', label: 'Low Priority'    },
 };
 
 export default function ServiceDetailScreen({ route, navigation }) {
   const { service } = route.params;
 
-  const categoryColor  = CATEGORY_COLORS[service.category];
-  const priorityConfig = PRIORITY_CONFIG[service.priority];
+  const categoryColor  = CATEGORY_COLORS[service.category] || { bg: '#F1F5F9', text: '#475569' };
+  const priorityConfig = PRIORITY_CONFIG[service.priority] || PRIORITY_CONFIG.LOW;
   const actionConfig   = ACTION_CONFIG[service.action] ?? ACTION_CONFIG.SCHEDULE;
 
   const [description, setDescription] = useState('');
@@ -125,178 +129,180 @@ export default function ServiceDetailScreen({ route, navigation }) {
   // ─────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar backgroundColor="#0038A8" barStyle="light-content" />
+      
+      {/* ── Header ── */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>← Back</Text>
+          <ArrowLeft size={24} color="#FFFFFF" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Service Details</Text>
-        <View style={{ width: 60 }} />
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerLabel}>SERVICE DETAILS</Text>
+          <Text style={styles.headerTitle} numberOfLines={1}>{service.name}</Text>
+        </View>
+        <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
 
-        {/* Identity card — always shown */}
-        <View style={styles.identityCard}>
-          <View style={styles.iconCircle}>
-            <Text style={styles.iconText}>{service.icon}</Text>
+          {/* ── Identity card ── */}
+          <View style={styles.identityCard}>
+            <View style={styles.iconCircle}>
+              <Text style={styles.iconText}>{service.icon}</Text>
+            </View>
+            <View style={styles.identityBody}>
+              <View style={[styles.categoryBadge, { backgroundColor: categoryColor.bg }]}>
+                <Text style={[styles.categoryBadgeText, { color: categoryColor.text }]}>
+                  {service.category}
+                </Text>
+              </View>
+              <Text style={styles.serviceName}>{service.name}</Text>
+              <Text style={styles.serviceDesc}>{service.description}</Text>
+            </View>
           </View>
-          <View style={styles.identityBody}>
-            <View style={[styles.categoryBadge, { backgroundColor: categoryColor.bg }]}>
-              <Text style={[styles.categoryBadgeText, { color: categoryColor.text }]}>
-                {service.category}
+
+          {/* ── GROUP A: Noise + Infra — input only, no urgency ── */}
+          {isReportOnly && !showUrgency && (
+            <View style={styles.inputGroup}>
+              <View style={styles.inputCard}>
+                <View style={styles.inputCardBody}>
+                  <MessageSquare size={18} color="#94A3B8" strokeWidth={1.8} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.textInputInCard}
+                    placeholder="Describe your concern briefly..."
+                    placeholderTextColor="#94A3B8"
+                    multiline
+                    numberOfLines={4}
+                    value={description}
+                    onChangeText={setDescription}
+                    textAlignVertical="top"
+                  />
+                </View>
+              </View>
+              <Text style={styles.inputHint}>
+                Provide a concise description to help the barangay act on your report efficiently.
               </Text>
             </View>
-            <Text style={styles.serviceName}>{service.name}</Text>
-            <Text style={styles.serviceDesc}>{service.description}</Text>
-          </View>
-        </View>
+          )}
 
-        {/* ── GROUP A: Noise + Infra — input only, no urgency ── */}
-        {isReportOnly && !showUrgency && (
-          <View style={styles.inputGroup}>
-            <View style={styles.inputCard}>
-              <View style={styles.inputCardBody}>
-                <MessageSquare size={18} color="#8A94A6" strokeWidth={1.8} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.textInputInCard}
-                  placeholder="Describe your concern briefly..."
-                  placeholderTextColor="#B0B8C9"
-                  multiline
-                  numberOfLines={4}
-                  value={description}
-                  onChangeText={setDescription}
-                  textAlignVertical="top"
-                />
+          {/* ── OTHER CONCERN: input + urgency ── */}
+          {isReportOnly && showUrgency && (
+            <View style={styles.inputGroup}>
+              <View style={styles.inputCard}>
+                <View style={styles.inputCardBody}>
+                  <MessageSquare size={18} color="#94A3B8" strokeWidth={1.8} style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.textInputInCard}
+                    placeholder="Describe your concern briefly..."
+                    placeholderTextColor="#94A3B8"
+                    multiline
+                    numberOfLines={4}
+                    value={description}
+                    onChangeText={setDescription}
+                    textAlignVertical="top"
+                  />
+                </View>
               </View>
+              
+              <Text style={styles.sectionTitle}>Urgency Level</Text>
+              <View style={styles.urgencyRow}>
+                {['Low', 'Medium', 'High'].map(level => (
+                  <TouchableOpacity
+                    key={level}
+                    style={[styles.urgencyChip, urgency === level && styles.urgencyChipActive]}
+                    onPress={() => setUrgency(level)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.urgencyText, urgency === level && styles.urgencyTextActive]}>
+                      {level}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <Text style={styles.inputHint}>
+                Provide a concise description to help the barangay act on your report efficiently.
+              </Text>
             </View>
-            <Text style={styles.inputHint}>
-              Provide a concise description to help the barangay act on your report efficiently.
-            </Text>
-          </View>
-        )}
+          )}
 
-        {/* ── OTHER CONCERN: input + urgency ── */}
-        {isReportOnly && showUrgency && (
-          <View style={styles.inputGroup}>
-            <View style={styles.inputCard}>
-              <View style={styles.inputCardBody}>
-                <MessageSquare size={18} color="#8A94A6" strokeWidth={1.8} style={styles.inputIcon} />
-                <TextInput
-                  style={styles.textInputInCard}
-                  placeholder="Describe your concern briefly..."
-                  placeholderTextColor="#B0B8C9"
-                  multiline
-                  numberOfLines={4}
-                  value={description}
-                  onChangeText={setDescription}
-                  textAlignVertical="top"
-                />
+          {/* ── Meta & Info Area (For Appts and Docs) ── */}
+          {(!isReportOnly) && (
+            <>
+              <View style={styles.metaCard}>
+                <View style={styles.metaRowItem}>
+                  <View style={styles.metaIconBox}>
+                    <MapPin size={18} color="#0038A8" strokeWidth={2} />
+                  </View>
+                  <View>
+                    <Text style={styles.metaLabel}>Facility</Text>
+                    <Text style={styles.metaValue}>{service.facility}</Text>
+                  </View>
+                </View>
+                
+                <View style={styles.metaDivider} />
+                
+                <View style={styles.metaRowItem}>
+                  <View style={[styles.priorityPill, { backgroundColor: priorityConfig.bg, borderColor: priorityConfig.border }]}>
+                    <View style={[styles.priorityDot, { backgroundColor: priorityConfig.color }]} />
+                    <Text style={[styles.priorityPillText, { color: priorityConfig.color }]}>
+                      {priorityConfig.label}
+                    </Text>
+                  </View>
+                </View>
               </View>
-            </View>
-            <Text style={styles.sectionTitle}>Urgency Level</Text>
-            <View style={styles.urgencyRow}>
-              {['Low', 'Medium', 'High'].map(level => (
-                <TouchableOpacity
-                  key={level}
-                  style={[styles.urgencyChip, urgency === level && styles.urgencyChipActive]}
-                  onPress={() => setUrgency(level)}
-                >
-                  <Text style={[styles.urgencyText, urgency === level && styles.urgencyTextActive]}>
-                    {level}
+
+              {/* Requirements */}
+              {(service.requirements && service.requirements.length > 0) && (
+                <View style={styles.infoCard}>
+                  <View style={styles.cardHeaderRow}>
+                    <View style={styles.cardIconBox}>
+                      <FileText size={16} color="#0038A8" strokeWidth={2} />
+                    </View>
+                    <Text style={styles.cardTitle}>
+                      {isBookingComplaint ? 'Bring these to your appointment' : 'Requirements'}
+                    </Text>
+                  </View>
+                  <View style={styles.requirementsList}>
+                    {service.requirements.map((req, i) => (
+                      <View key={i} style={styles.requirementRow}>
+                        <CheckCircle2 size={16} color="#0038A8" style={styles.reqIcon} />
+                        <Text style={styles.requirementText}>{req}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {/* Expectations (Only for Non-Complaint) */}
+              {!isBookingComplaint && (
+                <View style={styles.infoCard}>
+                  <View style={styles.cardHeaderRow}>
+                    <View style={styles.cardIconBox}>
+                      <MessageSquare size={16} color="#0038A8" strokeWidth={2} />
+                    </View>
+                    <Text style={styles.cardTitle}>What to expect</Text>
+                  </View>
+                  <Text style={styles.expectText}>
+                    {service.action === 'SCHEDULE'
+                      ? 'You will need to book an appointment. Staff will review your request and confirm your schedule. Bring all requirements on your appointment date.'
+                      : 'No appointment needed. Proceed directly to the facility during office hours and bring your requirements.'}
                   </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <Text style={styles.inputHint}>
-              Provide a concise description to help the barangay act on your report efficiently.
-            </Text>
-          </View>
-        )}
+                </View>
+              )}
 
-        {/* ── GROUP B: Property Dispute, Physical Threat, Domestic Issue — no input ── */}
-        {isBookingComplaint && (
-          <>
-            <View style={styles.metaRow}>
-              <View style={styles.metaItem}>
-                <Text style={styles.metaLabel}>Facility</Text>
-                <Text style={styles.metaValue}>📍 {service.facility}</Text>
-              </View>
-              <View style={[styles.priorityBadge, { backgroundColor: priorityConfig.bg }]}>
-                <Text style={[styles.priorityText, { color: priorityConfig.color }]}>
-                  {priorityConfig.label}
+              {/* Office Hours */}
+              <View style={styles.officeHoursCard}>
+                <Clock size={18} color="#64748B" strokeWidth={2} />
+                <Text style={styles.officeHoursText}>
+                  Office hours: Monday – Friday, 8:00 AM – 5:00 PM
                 </Text>
               </View>
-            </View>
+            </>
+          )}
 
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Bring these to your appointment</Text>
-              <View style={styles.requirementsCard}>
-                {(service.requirements ?? []).map((req, i) => (
-                  <View key={i} style={styles.requirementRow}>
-                    <View style={styles.requirementDot} />
-                    <Text style={styles.requirementText}>{req}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-
-            <View style={styles.officeHoursCard}>
-              <Text style={styles.officeHoursIcon}>🕐</Text>
-              <Text style={styles.officeHoursText}>
-                Office hours: Monday – Friday, 8:00 AM – 5:00 PM
-              </Text>
-            </View>
-          </>
-        )}
-
-        {/* ── MEDICAL / DOCUMENTS — no input ── */}
-        {!isReportOnly && !isBookingComplaint && (
-          <>
-            <View style={styles.metaRow}>
-              <View style={styles.metaItem}>
-                <Text style={styles.metaLabel}>Facility</Text>
-                <Text style={styles.metaValue}>📍 {service.facility}</Text>
-              </View>
-              <View style={[styles.priorityBadge, { backgroundColor: priorityConfig.bg }]}>
-                <Text style={[styles.priorityText, { color: priorityConfig.color }]}>
-                  {priorityConfig.label}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Requirements</Text>
-              <View style={styles.requirementsCard}>
-                {(service.requirements ?? []).map((req, i) => (
-                  <View key={i} style={styles.requirementRow}>
-                    <View style={styles.requirementDot} />
-                    <Text style={styles.requirementText}>{req}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>What to expect</Text>
-              <View style={styles.expectCard}>
-                <Text style={styles.expectText}>
-                  {service.action === 'SCHEDULE'
-                    ? 'You will need to book an appointment. Staff will review your request and confirm your schedule. Bring all requirements on your appointment date.'
-                    : 'No appointment needed. Proceed directly to the facility during office hours and bring your requirements.'}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.officeHoursCard}>
-              <Text style={styles.officeHoursIcon}>🕐</Text>
-              <Text style={styles.officeHoursText}>
-                Office hours: Monday – Friday, 8:00 AM – 5:00 PM
-              </Text>
-            </View>
-          </>
-        )}
-
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* ── Footer ── */}
       <View style={styles.footer}>
@@ -304,28 +310,33 @@ export default function ServiceDetailScreen({ route, navigation }) {
           <TouchableOpacity
             style={[
               styles.actionBtn,
-              { backgroundColor: '#0047AB' },
+              { backgroundColor: '#0038A8' },
               !description.trim() && styles.actionBtnDisabled,
             ]}
             onPress={handleSubmitReport}
             disabled={!description.trim()}
+            activeOpacity={0.85}
           >
-            <Send size={16} color="#FFF" strokeWidth={2} style={{ marginRight: 8 }} />
+            <Send size={18} color="#FFFFFF" strokeWidth={2.5} style={{ marginRight: 8 }} />
             <Text style={styles.actionBtnText}>Submit Report</Text>
           </TouchableOpacity>
         ) : isBookingComplaint ? (
           <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: '#0047AB' }]}
+            style={[styles.actionBtn, { backgroundColor: '#0038A8' }]}
             onPress={handleBookAppointment}
+            activeOpacity={0.85}
           >
-            <Text style={styles.actionBtnText}>Book a Mediation Appointment</Text>
+            <Text style={styles.actionBtnText}>Book a Mediation</Text>
+            <ChevronRight size={20} color="#FFFFFF" strokeWidth={2.5} />
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
             style={[styles.actionBtn, { backgroundColor: actionConfig.color }]}
             onPress={handleAction}
+            activeOpacity={0.85}
           >
             <Text style={styles.actionBtnText}>{actionConfig.label}</Text>
+            <ChevronRight size={20} color="#FFFFFF" strokeWidth={2.5} />
           </TouchableOpacity>
         )}
         <Text style={styles.actionSubLabel}>
@@ -340,107 +351,332 @@ export default function ServiceDetailScreen({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F6FA' },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight + 10 : 16,
-    paddingBottom: 12, backgroundColor: '#0047AB',
-  },
-  backBtn:     { padding: 4 },
-  backBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 15 },
-  headerTitle: { color: '#FFF', fontWeight: 'bold', fontSize: 17 },
-  content: { padding: 20, paddingBottom: 40 },
+// ─── STYLES ──────────────────────────────────────────────────
+const NAVY = '#0038A8';
+const BACKGROUND = '#F8FAFC';
+const WHITE = '#FFFFFF';
 
+const styles = StyleSheet.create({
+  container: { 
+    flex: 1, 
+    backgroundColor: BACKGROUND 
+  },
+  header: {
+    backgroundColor: NAVY,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) + 12 : 12,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  backBtn: { 
+    padding: 8,
+    marginLeft: -8,
+  },
+  headerCenter: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  headerLabel: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  headerTitle: {
+    color: WHITE,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  content: { 
+    padding: 20, 
+    paddingBottom: 40 
+  },
   identityCard: {
-    backgroundColor: '#FFF', borderRadius: 16, padding: 20, marginBottom: 14,
-    elevation: 1, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4,
+    flexDirection: 'row',
+    backgroundColor: WHITE, 
+    borderRadius: 16, 
+    padding: 20, 
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    elevation: 2, 
+    shadowColor: '#000', 
+    shadowOpacity: 0.03, 
+    shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
   },
   iconCircle: {
-    width: 56, height: 56, borderRadius: 14, backgroundColor: '#F0F2F8',
-    justifyContent: 'center', alignItems: 'center', marginBottom: 14,
+    width: 60, 
+    height: 60, 
+    borderRadius: 16, 
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    marginRight: 16,
   },
-  iconText:          { fontSize: 28 },
-  identityBody:      {},
-  categoryBadge:     { alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginBottom: 8 },
-  categoryBadgeText: { fontSize: 12, fontWeight: '700' },
-  serviceName:       { fontSize: 22, fontWeight: '800', color: '#1A1A2E', marginBottom: 8 },
-  serviceDesc:       { fontSize: 14, color: '#777', lineHeight: 21 },
-
-  metaRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: '#FFF', borderRadius: 14, padding: 16, marginBottom: 14, elevation: 1,
+  iconText: { 
+    fontSize: 32 
   },
-  metaItem:      { flex: 1, marginRight: 10 },
-  metaLabel:     { fontSize: 11, color: '#AAA', textTransform: 'uppercase', letterSpacing: 0.7, marginBottom: 4 },
-  metaValue:     { fontSize: 13, fontWeight: '600', color: '#444' },
-  priorityBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10 },
-  priorityText:  { fontSize: 12, fontWeight: '700' },
-
-  section:      { marginBottom: 14 },
-  sectionTitle: { fontSize: 13, fontWeight: '700', color: '#888', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 10 },
-
-  requirementsCard: {
-    backgroundColor: '#FFF', borderRadius: 14, padding: 16, elevation: 1,
-    shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 3, shadowOffset: { width: 0, height: 1 },
+  identityBody: {
+    flex: 1,
+    justifyContent: 'center',
   },
-  requirementRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 10, gap: 10 },
-  requirementDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#0047AB', marginTop: 6, flexShrink: 0 },
-  requirementText:{ fontSize: 14, color: '#333', flex: 1, lineHeight: 21 },
+  categoryBadge: { 
+    alignSelf: 'flex-start', 
+    paddingHorizontal: 10, 
+    paddingVertical: 4, 
+    borderRadius: 8, 
+    marginBottom: 8 
+  },
+  categoryBadgeText: { 
+    fontSize: 11, 
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  serviceName: { 
+    fontSize: 20, 
+    fontWeight: '800', 
+    color: '#0F172A', 
+    marginBottom: 6 
+  },
+  serviceDesc: { 
+    fontSize: 14, 
+    color: '#64748B', 
+    lineHeight: 20 
+  },
 
-  expectCard: { backgroundColor: '#EEF3FF', borderRadius: 14, padding: 16 },
-  expectText: { fontSize: 14, color: '#0047AB', lineHeight: 21 },
+  metaCard: {
+    flexDirection: 'row', 
+    alignItems: 'center',
+    backgroundColor: WHITE, 
+    borderRadius: 16, 
+    padding: 16, 
+    marginBottom: 16, 
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  metaRowItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  metaIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  metaDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: '#E2E8F0',
+    marginHorizontal: 16,
+  },
+  metaLabel: { 
+    fontSize: 10, 
+    color: '#94A3B8', 
+    textTransform: 'uppercase', 
+    fontWeight: '700',
+    letterSpacing: 0.5, 
+    marginBottom: 2 
+  },
+  metaValue: { 
+    fontSize: 14, 
+    fontWeight: '700', 
+    color: '#1E293B' 
+  },
+  priorityPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  priorityDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
+  },
+  priorityPillText: {
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+
+  infoCard: {
+    backgroundColor: WHITE, 
+    borderRadius: 16, 
+    padding: 20, 
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  cardIconBox: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  cardTitle: { 
+    fontSize: 15, 
+    fontWeight: '700', 
+    color: '#1E293B' 
+  },
+  requirementsList: {
+    gap: 12,
+  },
+  requirementRow: { 
+    flexDirection: 'row', 
+    alignItems: 'flex-start', 
+  },
+  reqIcon: {
+    marginTop: 2,
+    marginRight: 10,
+  },
+  requirementText: { 
+    fontSize: 14, 
+    color: '#475569', 
+    flex: 1, 
+    lineHeight: 22 
+  },
+  expectText: { 
+    fontSize: 14, 
+    color: '#475569', 
+    lineHeight: 22 
+  },
 
   officeHoursCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: '#FFF', borderRadius: 12, padding: 14,
-    borderWidth: 1, borderColor: '#EEE', marginBottom: 14,
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'transparent', 
+    padding: 14,
+    marginBottom: 16,
   },
-  officeHoursIcon: { fontSize: 16 },
-  officeHoursText: { fontSize: 13, color: '#888' },
-
-  inputSection: { marginTop: 6, marginBottom: 10 },
-  textInput: {
-    backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E4E9F2',
-    borderRadius: 10, padding: 14, fontSize: 15, color: '#333',
-    minHeight: 100, textAlignVertical: 'top',
+  officeHoursText: { 
+    fontSize: 13, 
+    color: '#64748B',
+    fontWeight: '500'
   },
 
-  // ── GuidedIntake-style input card (Group A) ──────────────
-  inputGroup:   { gap: 12, marginTop: 4 },
+  sectionTitle: { 
+    fontSize: 13, 
+    fontWeight: '700', 
+    color: '#64748B', 
+    textTransform: 'uppercase', 
+    letterSpacing: 0.8, 
+    marginBottom: 10,
+    marginTop: 6,
+  },
+
+  inputGroup: { gap: 12, marginTop: 4 },
   inputCard: {
-    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E4E9F2',
-    borderRadius: 8, overflow: 'hidden',
+    backgroundColor: WHITE, 
+    borderWidth: 1, 
+    borderColor: '#E2E8F0',
+    borderRadius: 14, 
+    overflow: 'hidden',
   },
-  inputCardBody: { padding: 14, flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  inputIcon:     { marginTop: 2, flexShrink: 0 },
+  inputCardBody: { 
+    padding: 16, 
+    flexDirection: 'row', 
+    alignItems: 'flex-start', 
+    gap: 12 
+  },
+  inputIcon: { 
+    marginTop: 2, 
+    flexShrink: 0 
+  },
   textInputInCard: {
-    flex: 1, fontSize: 15, color: '#1A2340', lineHeight: 22, minHeight: 100,
+    flex: 1, 
+    fontSize: 16, 
+    color: '#1E293B', 
+    lineHeight: 22, 
+    minHeight: 120,
   },
-  inputHint: { fontSize: 12, color: '#8A94A6', lineHeight: 18, letterSpacing: 0.1 },
+  inputHint: { 
+    fontSize: 12, 
+    color: '#94A3B8', 
+    lineHeight: 18, 
+    textAlign: 'center',
+    marginTop: 4,
+  },
 
   urgencyRow: { flexDirection: 'row', gap: 10 },
   urgencyChip: {
-    flex: 1, paddingVertical: 10, borderRadius: 8,
-    borderWidth: 1, borderColor: '#E4E9F2', alignItems: 'center', backgroundColor: '#FFF',
+    flex: 1, 
+    paddingVertical: 12, 
+    borderRadius: 12,
+    borderWidth: 1, 
+    borderColor: '#E2E8F0', 
+    alignItems: 'center', 
+    backgroundColor: WHITE,
   },
-  urgencyChipActive:  { backgroundColor: '#0047AB', borderColor: '#0047AB' },
-  urgencyText:        { fontSize: 14, color: '#666', fontWeight: '600' },
-  urgencyTextActive:  { color: '#FFF', fontWeight: '600' },
+  urgencyChipActive:  { backgroundColor: NAVY, borderColor: NAVY },
+  urgencyText:        { fontSize: 14, color: '#64748B', fontWeight: '700' },
+  urgencyTextActive:  { color: WHITE, fontWeight: '700' },
 
   footer: {
-    padding: 16,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 16,
-    backgroundColor: '#FFF',
-    borderTopWidth: 1, borderTopColor: '#F0F0F0',
+    padding: 20,
+    paddingBottom: Platform.OS === 'ios' ? 32 : 20,
+    backgroundColor: WHITE,
+    borderTopWidth: 1, 
+    borderTopColor: '#E2E8F0',
   },
   actionBtn: {
-    padding: 18, borderRadius: 14, alignItems: 'center',
-    marginBottom: 8, flexDirection: 'row', justifyContent: 'center',
+    flexDirection: 'row',
+    height: 56, 
+    borderRadius: 14, 
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12, 
+    gap: 8,
+    elevation: 4,
+    shadowColor: NAVY,
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
   },
-  actionBtnDisabled: { backgroundColor: '#B0B8C9' },
-  actionBtnText:     { color: '#FFF', fontWeight: 'bold', fontSize: 17 },
-  actionSubLabel:    { fontSize: 13, color: '#AAA', textAlign: 'center' },
+  actionBtnDisabled: { 
+    backgroundColor: '#94A3B8',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  actionBtnText: { 
+    color: WHITE, 
+    fontWeight: '700', 
+    fontSize: 16 
+  },
+  actionSubLabel: { 
+    fontSize: 12, 
+    color: '#94A3B8', 
+    textAlign: 'center',
+    lineHeight: 18,
+  },
 });

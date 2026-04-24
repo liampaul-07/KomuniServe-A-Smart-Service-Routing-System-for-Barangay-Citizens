@@ -5,7 +5,7 @@ import {
   Image, Alert
 } from 'react-native';
 import { processRequest } from '../services/RuleEngine';
-import { supabase } from '../services/supabase'
+import { supabase } from '../services/supabase';
 
 import {
   HeartPulse,
@@ -33,96 +33,95 @@ import {
 } from 'lucide-react-native';
 
 const ICON_MAP = {
-  Medical:                HeartPulse,
-  Documents:              FileText,
-  Complaint:              Scale,
-  Physical:               Stethoscope,
-  Psychological:          Brain,
-  Checkup:                ClipboardList,
-  High:                   AlertTriangle,
-  Low:                    ClipboardList,
-  Clearance:              BookOpen,
-  Indigency:              BookOpen,
-  Residency:              Home,
-  Good_Moral:             BookOpen,
-  Business_Permit:        FileText,
-  Noise:                  Volume2,
-  Property_Dispute:       Home,
-  Physical_Threat:        ShieldAlert,
-  Domestic_Issue:         Users,
-  Infrastructure:         Construction,
-  Other:                  MessageSquare,
-  Broken_Water_Pump:      Droplets,
+  Medical: HeartPulse,
+  Documents: FileText,
+  Complaint: Scale,
+  Physical: Stethoscope,
+  Psychological: Brain,
+  Checkup: ClipboardList,
+  High: AlertTriangle,
+  Low: ClipboardList,
+  Clearance: BookOpen,
+  Indigency: BookOpen,
+  Residency: Home,
+  Good_Moral: BookOpen,
+  Business_Permit: FileText,
+  Noise: Volume2,
+  Property_Dispute: Home,
+  Physical_Threat: ShieldAlert,
+  Domestic_Issue: Users,
+  Infrastructure: Construction,
+  Other: MessageSquare,
+  Broken_Water_Pump: Droplets,
   Broken_Electrical_Wire: Zap,
-  Eroded_Road:            RoadCone,
-  Other_Infrastructure:   Wrench,
+  Eroded_Road: RoadCone,
+  Other_Infrastructure: Wrench,
 };
 
 const URGENCY_VALUES = ['High'];
 
 const COMPLAINT_BOOKING_REQUIREMENTS = {
   Property_Dispute: ['Valid ID', 'Brief description of the dispute', 'Property documents (title, photos, etc.)'],
-  Physical_Threat:  ['Valid ID', 'Brief description of the incident', 'Any evidence (photos, messages, witness names)'],
-  Domestic_Issue:   ['Valid ID', 'Brief description of the situation'],
+  Physical_Threat: ['Valid ID', 'Brief description of the incident', 'Any evidence (photos, messages, witness names)'],
+  Domestic_Issue: ['Valid ID', 'Brief description of the situation'],
 };
 
 const tree = {
   START: {
     question: "What do you need help with?",
     options: [
-      { label: "Medical Assistance",  value: "Medical",   next: "MEDICAL_TYPE"   },
-      { label: "Document Request",    value: "Documents", next: "DOC_TYPE"        },
-      { label: "File a Complaint",    value: "Complaint", next: "COMPLAINT_TYPE"  },
+      { label: "Medical Assistance", value: "Medical", next: "MEDICAL_TYPE" },
+      { label: "Document Request", value: "Documents", next: "DOC_TYPE" },
+      { label: "File a Complaint", value: "Complaint", next: "COMPLAINT_TYPE" },
     ]
   },
   MEDICAL_TYPE: {
     question: "What kind of medical concern?",
     options: [
-      { label: "Physical Condition",          value: "Physical",      next: "MEDICAL_URGENCY" },
-      { label: "Psychological / Mental Health",value: "Psychological", next: "FINISH"          },
-      { label: "Checkup or Routine Visit",    value: "Checkup",       next: "FINISH"          },
+      { label: "Physical Condition", value: "Physical", next: "MEDICAL_URGENCY" },
+      { label: "Psychological / Mental Health", value: "Psychological", next: "FINISH" },
+      { label: "Checkup or Routine Visit", value: "Checkup", next: "FINISH" },
     ]
   },
   MEDICAL_URGENCY: {
     question: "How urgent is your physical concern?",
     options: [
       { label: "Urgent — Needs Immediate Attention", value: "High", next: "FINISH" },
-      { label: "Routine — Can Wait for Appointment", value: "Low",  next: "FINISH" },
+      { label: "Routine — Can Wait for Appointment", value: "Low", next: "FINISH" },
     ]
   },
   DOC_TYPE: {
     question: "Which document do you need?",
     options: [
-      { label: "Barangay Clearance",           value: "Clearance",      next: "FINISH" },
-      { label: "Certificate of Indigency",     value: "Indigency",      next: "FINISH" },
-      { label: "Certificate of Residency",     value: "Residency",      next: "FINISH" },
+      { label: "Barangay Clearance", value: "Clearance", next: "FINISH" },
+      { label: "Certificate of Indigency", value: "Indigency", next: "FINISH" },
+      { label: "Certificate of Residency", value: "Residency", next: "FINISH" },
       { label: "Good Moral Character Certificate", value: "Good_Moral", next: "FINISH" },
-      { label: "Barangay Business Permit",     value: "Business_Permit",next: "FINISH" },
+      { label: "Barangay Business Permit", value: "Business_Permit", next: "FINISH" },
     ]
   },
   COMPLAINT_TYPE: {
     question: "What type of complaint?",
     options: [
-      { label: "Noise or Public Disturbance",    value: "Noise",            urgency: "Low",    next: "COMPLAINT_INPUT" },
-      { label: "Property Dispute",               value: "Property_Dispute", urgency: "Medium", next: "COMPLAINT_BOOKING_INFO" },
-      { label: "Physical Threat or Violence",    value: "Physical_Threat",  urgency: "High",   next: "COMPLAINT_BOOKING_INFO" },
-      { label: "Domestic Issue",                 value: "Domestic_Issue",   urgency: "High",   next: "COMPLAINT_BOOKING_INFO" },
-      { label: "Street / Infrastructure Problem",value: "Infrastructure",                      next: "COMPLAINT_INFRA" },
-      { label: "Other Concern",                  value: "Other",            urgency: "Low",    next: "COMPLAINT_INPUT" },
+      { label: "Noise or Public Disturbance", value: "Noise", urgency: "Low", next: "COMPLAINT_INPUT" },
+      { label: "Property Dispute", value: "Property_Dispute", urgency: "Medium", next: "COMPLAINT_BOOKING_INFO" },
+      { label: "Physical Threat or Violence", value: "Physical_Threat", urgency: "High", next: "COMPLAINT_BOOKING_INFO" },
+      { label: "Domestic Issue", value: "Domestic_Issue", urgency: "High", next: "COMPLAINT_BOOKING_INFO" },
+      { label: "Street / Infrastructure Problem", value: "Infrastructure", next: "COMPLAINT_INFRA" },
+      { label: "Other Concern", value: "Other", urgency: "Low", next: "COMPLAINT_INPUT" },
     ]
   },
   COMPLAINT_BOOKING_INFO: {
     type: 'booking_info',
     question: 'Book a Mediation Appointment',
   },
-  
   COMPLAINT_INFRA: {
     question: "What kind of infrastructure problem?",
     options: [
-      { label: "Broken Water Pump",       value: "Broken_Water_Pump",      urgency: "Medium", next: "COMPLAINT_INPUT" },
-      { label: "Broken Electrical Wire",  value: "Broken_Electrical_Wire", urgency: "High",   next: "COMPLAINT_INPUT" },
-      { label: "Eroded or Dangerous Road",value: "Eroded_Road",            urgency: "High",   next: "COMPLAINT_INPUT" },
-      { label: "Other Infrastructure Issue", value: "Other_Infrastructure",urgency: "Medium", next: "COMPLAINT_INPUT" },
+      { label: "Broken Water Pump", value: "Broken_Water_Pump", urgency: "Medium", next: "COMPLAINT_INPUT" },
+      { label: "Broken Electrical Wire", value: "Broken_Electrical_Wire", urgency: "High", next: "COMPLAINT_INPUT" },
+      { label: "Eroded or Dangerous Road", value: "Eroded_Road", urgency: "High", next: "COMPLAINT_INPUT" },
+      { label: "Other Infrastructure Issue", value: "Other_Infrastructure", urgency: "Medium", next: "COMPLAINT_INPUT" },
     ]
   },
   COMPLAINT_INPUT: {
@@ -268,61 +267,64 @@ export default function GuidedPathScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* ✅ Solid Navy status bar — no gold stripe on header */}
       <StatusBar barStyle="light-content" backgroundColor={NAVY} />
 
-      {/* ── Header: solid Navy, IconLogo.jpeg centered ── */}
+      {/* ── Header ── */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleBack} style={styles.backBtn} activeOpacity={0.7}>
-          <ChevronLeft size={20} color="#FFFFFF" strokeWidth={2.5} />
+          <ChevronLeft size={24} color="#FFFFFF" strokeWidth={2.5} />
           <Text style={styles.backLabel}>Back</Text>
         </TouchableOpacity>
-
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerLabel}>GUIDED PATH</Text>
+          <Text style={styles.headerTitle}>
+            {currentStep === 'START'
+              ? 'Service Request'
+              : selections.category || 'Select Option'}
+          </Text>
+        </View>
         <StepIndicator current={stepNumber} />
       </View>
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView
           contentContainerStyle={styles.scroll}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          {/* ── Section label ── */}
-          <Text style={styles.sectionLabel}>
-            {currentStep === 'START'
-              ? 'Service Request'
-              : selections.category
-                ? selections.category.toUpperCase()
-                : 'SELECT AN OPTION'}
-          </Text>
-
           {/* ── Question ── */}
           <Text style={styles.question}>{currentQ.question}</Text>
-          
-          
 
-          {/* ── Text input mode ── */}
-          
+          {/* ── Booking Info Mode ── */}
           {currentQ.type === 'booking_info' ? (
             <View style={styles.bookingInfoGroup}>
-              <Text style={styles.bookingInfoDesc}>
-                Please bring the following to your appointment:
-              </Text>
-
-              <View style={styles.requirementsCard}>
-                {(COMPLAINT_BOOKING_REQUIREMENTS[selections.subType] ?? ['Valid ID', 'Brief description']).map((req, i) => (
-                  <View key={i} style={styles.requirementRow}>
-                    <View style={styles.requirementDot} />
-                    <Text style={styles.requirementText}>{req}</Text>
+              <View style={styles.infoCard}>
+                <View style={styles.infoCardHeader}>
+                  <View style={styles.infoIconBox}>
+                    <ClipboardList size={22} color={NAVY} strokeWidth={1.8} />
                   </View>
-                ))}
+                  <Text style={styles.infoCardTitle}>Required Documents</Text>
+                </View>
+                <Text style={styles.bookingInfoDesc}>
+                  Please bring the following to your appointment:
+                </Text>
+                <View style={styles.requirementsList}>
+                  {(COMPLAINT_BOOKING_REQUIREMENTS[selections.subType] ?? ['Valid ID', 'Brief description']).map((req, i) => (
+                    <View key={i} style={styles.requirementRow}>
+                      <View style={styles.requirementDot} />
+                      <Text style={styles.requirementText}>{req}</Text>
+                    </View>
+                  ))}
+                </View>
               </View>
 
-              <View style={styles.officeHoursRow}>
+              <View style={styles.officeHoursCard}>
+                <Calendar size={18} color="#8892AA" strokeWidth={1.8} />
                 <Text style={styles.officeHoursText}>
-                  🕐 Office hours: Monday – Friday, 8:00 AM – 5:00 PM
+                  Office hours: Monday – Friday, 8:00 AM – 5:00 PM
                 </Text>
               </View>
 
@@ -331,18 +333,18 @@ export default function GuidedPathScreen({ navigation }) {
                 onPress={handleBookComplaint}
                 activeOpacity={0.85}
               >
-                <Calendar size={17} color="#FFFFFF" strokeWidth={2} />
+                <Calendar size={20} color="#FFFFFF" strokeWidth={2} />
                 <Text style={styles.submitBtnText}>Book an Appointment</Text>
               </TouchableOpacity>
             </View>
-          ) : currentQ.type === 'text_input' ? (
-            <View style={styles.inputGroup}>
 
-              {/* ✅ Gold 4px accent on input card */}
+          ) : currentQ.type === 'text_input' ? (
+            /* ── Text Input Mode ── */
+            <View style={styles.inputGroup}>
               <View style={styles.inputCard}>
                 <View style={styles.inputCardBody}>
                   <MessageSquare
-                    size={18}
+                    size={22}
                     color="#8A94A6"
                     style={styles.inputIcon}
                     strokeWidth={1.8}
@@ -370,26 +372,26 @@ export default function GuidedPathScreen({ navigation }) {
                 disabled={!inputText.trim()}
                 activeOpacity={0.85}
               >
-                <Send size={17} color="#FFFFFF" strokeWidth={2} />
+                <Send size={20} color="#FFFFFF" strokeWidth={2} />
                 <Text style={styles.submitBtnText}>Submit Request</Text>
               </TouchableOpacity>
-
             </View>
+
           ) : (
-            /* ── Option cards ── */
+            /* ── Option Cards ── */
             <View style={styles.optionList}>
               {currentQ.options.map((opt, i) => {
                 const IconComponent = ICON_MAP[opt.value] || FileText;
                 const isUrgent = opt.urgency && URGENCY_VALUES.includes(opt.urgency);
 
                 return (
-                  // ✅ Gold 4px accent on each option card
                   <TouchableOpacity
                     key={i}
                     style={[styles.optionCard, isUrgent && styles.optionCardUrgent]}
                     onPress={() => handleSelection(opt)}
                     activeOpacity={0.75}
                   >
+                    {isUrgent && <View style={styles.optionCardUrgentAccent} />}
 
                     <View style={styles.optionCardInner}>
                       <View style={[
@@ -399,25 +401,31 @@ export default function GuidedPathScreen({ navigation }) {
                           : styles.iconContainerDefault,
                       ]}>
                         <IconComponent
-                          size={20}
-                          color={isUrgent ? '#B94A00' : NAVY}
+                          size={24}
+                          color={isUrgent ? '#C0391B' : NAVY}
                           strokeWidth={1.8}
                         />
                       </View>
 
-                      <Text style={[
-                        styles.optionLabel,
-                        isUrgent && styles.optionLabelUrgent,
-                      ]}>
-                        {opt.label}
-                      </Text>
+                      <View style={styles.optionTextBlock}>
+                        <Text style={[
+                          styles.optionLabel,
+                          isUrgent && styles.optionLabelUrgent,
+                        ]}>
+                          {opt.label}
+                        </Text>
+                        {isUrgent && (
+                          <Text style={styles.urgentSubLabel}>Requires immediate attention</Text>
+                        )}
+                      </View>
 
                       {isUrgent ? (
                         <View style={styles.urgentBadge}>
+                          <AlertTriangle size={12} color="#FFFFFF" strokeWidth={2.5} style={{ marginRight: 3 }} />
                           <Text style={styles.urgentBadgeText}>URGENT</Text>
                         </View>
                       ) : (
-                        <ChevronRight size={16} color="#C8D0DF" strokeWidth={2} />
+                        <ChevronRight size={20} color="#C5D0E8" strokeWidth={2} />
                       )}
                     </View>
                   </TouchableOpacity>
@@ -426,10 +434,13 @@ export default function GuidedPathScreen({ navigation }) {
             </View>
           )}
 
-          <Text style={styles.footerNote}>
-            All information provided is handled in accordance with the{' '}
-            <Text style={styles.footerNoteLink}>Data Privacy Act of 2012</Text>.
-          </Text>
+          {/* ── Footer ── */}
+          <View style={styles.footerBlock}>
+            <Text style={styles.footerNote}>
+              All information provided is handled in accordance with the
+            </Text>
+            <Text style={styles.footerNoteLink}>Data Privacy Act of 2012</Text>
+          </View>
 
         </ScrollView>
       </KeyboardAvoidingView>
@@ -439,8 +450,8 @@ export default function GuidedPathScreen({ navigation }) {
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const NAVY        = '#0038A8';
-const GOLD_STRIPE = '#F9C800';
 const GOLD_LABEL  = '#C8960C';
+const GOLD_STRIPE = '#F9C800';
 
 const styles = StyleSheet.create({
   container: {
@@ -448,15 +459,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#F2F4F8',
   },
 
-  // ── Header: solid Navy, no gold stripe ──────────
+  // ── Header ──────────────────────────────────────
   header: {
     backgroundColor: NAVY,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) + 12 : 16,
-    paddingBottom: 14,
+    paddingHorizontal: 24,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) + 16 : 20,
+    paddingBottom: 18,
     elevation: 4,
     shadowColor: '#000',
     shadowOpacity: 0.15,
@@ -469,47 +480,52 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingVertical: 4,
     paddingRight: 8,
+    minWidth: 64,
   },
   backLabel: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: '600',
     letterSpacing: 0.1,
   },
-
-  // ✅ IconLogo — perfect circle, white bg, subtle border
-  headerLogoWrapper: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    overflow: 'hidden',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.4)',
+  headerCenter: {
     alignItems: 'center',
-    justifyContent: 'center',
+    flex: 1,
   },
-  headerLogo: {
-    width: '100%',
-    height: '100%',
+  headerLabel: {
+    color: GOLD_LABEL,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 1.4,
+    textTransform: 'uppercase',
+    marginBottom: 2,
+  },
+  headerTitle: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+    textTransform: 'capitalize',
   },
 
   // ── Step indicator dots ──────────────────────────
   stepRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+    minWidth: 64,
+    justifyContent: 'flex-end',
   },
   dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    height: 9,
+    borderRadius: 5,
+    width: 9,
   },
   dotActive: {
-    width: 24,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: GOLD_STRIPE,       // ✅ Gold dot on navy bg reads perfectly
+    width: 26,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: GOLD_STRIPE,
   },
   dotDone: {
     backgroundColor: 'rgba(255,255,255,0.5)',
@@ -518,115 +534,127 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
   },
 
-  // ── Scroll content ───────────────────────────────
+  // ── Scroll ──────────────────────────────────────
   scroll: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingTop: 28,
-    paddingBottom: 40,
+    paddingBottom: 56,
     flexGrow: 1,
   },
-  sectionLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: GOLD_LABEL,
-    letterSpacing: 1.4,
-    marginBottom: 10,
-    textTransform: 'uppercase',
-  },
   question: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: '700',
-    color: '#0D1B3E',
-    lineHeight: 32,
-    marginBottom: 28,
+    color: '#1A1F36',
+    lineHeight: 36,
+    marginBottom: 24,
     letterSpacing: -0.3,
   },
 
   // ── Option cards ─────────────────────────────────
   optionList: {
-    gap: 10,
+    gap: 14,
   },
   optionCard: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E4E9F2',
-    borderRadius: 8,
-    overflow: 'hidden',                 // ✅ clips gold accent to rounded corners
+    borderColor: '#E0E4EF',
+    borderRadius: 10,
+    overflow: 'hidden',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
   },
   optionCardUrgent: {
     backgroundColor: '#FFF4EE',
     borderColor: '#F5C4A1',
   },
-  // ✅ Gold 4px top accent on cards
-  cardGoldAccent: {
-    height: 4,
-    backgroundColor: GOLD_STRIPE,
-  },
-  cardUrgentAccent: {
-    backgroundColor: '#F97316',         // warm orange accent for urgent cards
+  optionCardUrgentAccent: {
+    height: 3,
+    backgroundColor: '#C0391B',
   },
   optionCardInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    gap: 14,
+    paddingVertical: 18,
+    paddingHorizontal: 18,
+    gap: 16,
   },
   iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
+    width: 52,
+    height: 52,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+    borderWidth: 1,
   },
   iconContainerDefault: {
     backgroundColor: '#EEF2FB',
+    borderColor: '#C5D5F5',
   },
   iconContainerUrgent: {
     backgroundColor: '#FFE8D6',
+    borderColor: '#F5C4A1',
+  },
+  optionTextBlock: {
+    flex: 1,
+    gap: 4,
   },
   optionLabel: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#1A2340',
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#1A1F36',
     letterSpacing: 0.1,
-    lineHeight: 21,
+    lineHeight: 24,
   },
   optionLabelUrgent: {
     color: '#B94A00',
-    fontWeight: '600',
+  },
+  urgentSubLabel: {
+    fontSize: 14,
+    color: '#C0391B',
+    opacity: 0.75,
+    letterSpacing: 0.1,
   },
   urgentBadge: {
-    backgroundColor: '#B94A00',
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#C0391B',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    flexShrink: 0,
   },
   urgentBadgeText: {
     color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '800',
     letterSpacing: 0.8,
   },
 
   // ── Text input card ──────────────────────────────
   inputGroup: {
-    gap: 12,
+    gap: 16,
   },
   inputCard: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E4E9F2',
-    borderRadius: 8,
-    overflow: 'hidden',                 // ✅ clips gold accent
+    borderColor: '#E0E4EF',
+    borderRadius: 10,
+    overflow: 'hidden',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
   },
   inputCardBody: {
-    padding: 14,
+    padding: 18,
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 12,
+    gap: 16,
   },
   inputIcon: {
     marginTop: 2,
@@ -634,26 +662,110 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    fontSize: 15,
-    color: '#1A2340',
-    lineHeight: 22,
-    minHeight: 100,
+    fontSize: 17,
+    color: '#1A1F36',
+    lineHeight: 26,
+    minHeight: 120,
   },
   inputHint: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#8A94A6',
-    lineHeight: 18,
+    lineHeight: 22,
     letterSpacing: 0.1,
   },
+
+  // ── Booking info ─────────────────────────────────
+  bookingInfoGroup: {
+    gap: 16,
+  },
+  infoCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#E0E4EF',
+    gap: 16,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+  },
+  infoCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  infoIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    backgroundColor: '#EEF2FB',
+    borderWidth: 1,
+    borderColor: '#C5D5F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  infoCardTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1A1F36',
+    letterSpacing: 0.1,
+  },
+  bookingInfoDesc: {
+    fontSize: 15,
+    color: '#8892AA',
+    lineHeight: 24,
+  },
+  requirementsList: {
+    gap: 12,
+  },
+  requirementRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 14,
+  },
+  requirementDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: NAVY,
+    marginTop: 9,
+    flexShrink: 0,
+  },
+  requirementText: {
+    fontSize: 16,
+    color: '#1A1F36',
+    flex: 1,
+    lineHeight: 24,
+  },
+  officeHoursCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#E0E4EF',
+  },
+  officeHoursText: {
+    fontSize: 15,
+    color: '#8892AA',
+    flex: 1,
+    lineHeight: 22,
+  },
+
+  // ── Submit button ────────────────────────────────
   submitBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: NAVY,
-    paddingVertical: 15,
-    borderRadius: 8,
-    gap: 10,
-    marginTop: 4,
+    paddingVertical: 18,
+    borderRadius: 10,
+    gap: 12,
+    marginTop: 8,
     elevation: 3,
     shadowColor: '#000',
     shadowOpacity: 0.15,
@@ -667,38 +779,28 @@ const styles = StyleSheet.create({
   },
   submitBtnText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: '700',
     letterSpacing: 0.4,
   },
 
   // ── Footer ───────────────────────────────────────
+  footerBlock: {
+    marginTop: 48,
+    alignItems: 'center',
+  },
   footerNote: {
-    marginTop: 36,
-    fontSize: 11.5,
+    fontSize: 13,
     color: '#A0ABBC',
     textAlign: 'center',
-    lineHeight: 17,
+    lineHeight: 20,
     letterSpacing: 0.1,
   },
   footerNoteLink: {
+    fontSize: 13,
     color: NAVY,
     fontWeight: '600',
+    textAlign: 'center',
+    letterSpacing: 0.1,
   },
-  bookingInfoGroup: { gap: 14 },
-  bookingInfoDesc: {
-    fontSize: 15, color: '#4A5270', lineHeight: 22,
-  },
-  requirementsCard: {
-    backgroundColor: '#FFFFFF', borderRadius: 10, padding: 16,
-    borderWidth: 1, borderColor: '#E4E9F2', gap: 4,
-  },
-  requirementRow:  { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  requirementDot:  { width: 7, height: 7, borderRadius: 4, backgroundColor: NAVY, marginTop: 6, flexShrink: 0 },
-  requirementText: { fontSize: 14, color: '#1A2340', flex: 1, lineHeight: 21 },
-  officeHoursRow:  {
-    backgroundColor: '#FFFFFF', borderRadius: 10, padding: 14,
-    borderWidth: 1, borderColor: '#E4E9F2',
-  },
-  officeHoursText: { fontSize: 13, color: '#8A94A6' },
 });

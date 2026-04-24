@@ -7,17 +7,15 @@ import {
   UIManager, Image,
 } from 'react-native';
 
-import Svg, { Path } from 'react-native-svg';
-import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react-native';
+import Svg, { Path, Defs, LinearGradient, Stop, Rect, Circle } from 'react-native-svg';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, ShieldCheck } from 'lucide-react-native';
 
 import { supabase } from '../services/supabase';
 
-// Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-// ─── Custom SVG Spinner  ──────────────────────────────────────────
 function EGovSpinner({ size = 44 }) {
   const rotation = useRef(new Animated.Value(0)).current;
 
@@ -57,12 +55,11 @@ function EGovSpinner({ size = 44 }) {
     return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${large} 0 ${end.x} ${end.y}`;
   };
 
-  // ✅ Equal 120° each, small 6° gap between each segment
   const GAP = 6;
   const segments = [
-    { color: '#1A3EBF', start: 0   + GAP / 2, end: 120 - GAP / 2 },  // Blue
-    { color: '#CE1126', start: 120 + GAP / 2, end: 240 - GAP / 2 },  // Red
-    { color: '#F9C800', start: 240 + GAP / 2, end: 360 - GAP / 2 },  // Yellow
+    { color: '#1A3EBF', start: 0   + GAP / 2, end: 120 - GAP / 2 },
+    { color: '#CE1126', start: 120 + GAP / 2, end: 240 - GAP / 2 },
+    { color: '#F9C800', start: 240 + GAP / 2, end: 360 - GAP / 2 },
   ];
 
   return (
@@ -83,7 +80,32 @@ function EGovSpinner({ size = 44 }) {
   );
 }
 
-// ─── Main Screen ─────────────────────────────────────────────────────────────
+function HeaderDecoration() {
+  return (
+    <Svg
+      width="100%"
+      height={220}          
+      viewBox="0 0 390 220" 
+      preserveAspectRatio="xMidYMid slice"
+      style={StyleSheet.absoluteFillObject}
+    >
+      <Defs>
+        <LinearGradient id="headerGrad" x1="0" y1="0" x2="1" y2="1">
+          <Stop offset="0%" stopColor="#0038A8" />
+          <Stop offset="100%" stopColor="#0052CC" />
+        </LinearGradient>
+      </Defs>
+      <Rect x="0" y="0" width="390" height="220" fill="url(#headerGrad)" />
+      <Circle cx="340" cy="20"  r="90"  fill="#FFFFFF" fillOpacity="0.04" />
+      <Circle cx="360" cy="200" r="70"  fill="#FFFFFF" fillOpacity="0.04" />
+      <Circle cx="30"  cy="180" r="60"  fill="#FFFFFF" fillOpacity="0.04" />
+      <Rect x="0"   y="213" width="130" height="7" fill="#CE1126" />
+      <Rect x="130" y="213" width="130" height="7" fill="#FFFFFF" />
+      <Rect x="260" y="213" width="130" height="7" fill="#0038A8" />
+    </Svg>
+  );
+}
+
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -92,12 +114,12 @@ export default function LoginScreen({ navigation }) {
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim  = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+      Animated.timing(fadeAnim,  { toValue: 1, duration: 500, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
     ]).start();
   }, []);
@@ -113,9 +135,9 @@ export default function LoginScreen({ navigation }) {
 
     setTimeout(async () => {
       try {
-        const { data, error } = await supabase.auth.signInWithPassword({ 
-          email, 
-          password 
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
         });
 
         if (error) throw error;
@@ -125,9 +147,9 @@ export default function LoginScreen({ navigation }) {
           .select('role')
           .eq('id', data.user.id)
           .single();
-        
+
         if (profileError) throw profileError;
-      
+
         if (profile.role === 'barangay_staff') {
           navigation.replace('AdminDashboard');
         } else {
@@ -135,42 +157,66 @@ export default function LoginScreen({ navigation }) {
         }
       } catch (error) {
         console.log('Login error:', error.message);
-        Alert.alert('Login Failed','An unexpected error occurred. Please try again.');
+        Alert.alert('Login Failed', 'An unexpected error occurred. Please try again.');
       } finally {
         setIsLoading(false);
-      } 
+      }
     }, 500);
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar backgroundColor="#FFFFFF" barStyle="dark-content" />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          
-          <View style={styles.topStripe}/>
+      <StatusBar backgroundColor={NAVY} barStyle="light-content" />
 
-          <Animated.View style={[styles.logoBlock, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            <View style={styles.iconLogoWrapper}>
-              <Image source={require('../../assets/IconLogo.jpeg')} style={styles.iconLogo} resizeMode="cover" />
-            </View>
-            <Text style={styles.appName}>KomuniServe</Text>
-            <Text style={styles.appTagline}>Barangay Digital Services</Text>
-          </Animated.View>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.headerArea}>
+            <HeaderDecoration />
+            <Animated.View
+              style={[
+                styles.logoBlock,
+                { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+              ]}
+            >
+              <View style={styles.iconLogoWrapper}>
+                <Image
+                  source={require('../../assets/IconLogo.jpeg')}
+                  style={styles.iconLogo}
+                  resizeMode="cover"
+                />
+              </View>
+              <Text style={styles.appName}>KomuniServe</Text>
+            </Animated.View>
+          </View>
 
-          <Animated.View style={[styles.formBlock, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            <Text style={styles.helloText}>Hello, Welcome!</Text>
-            <Text style={styles.loginSubtitle}>Log in to access barangay services and manage your requests.</Text>
+          <Animated.View
+            style={[
+              styles.card,
+              { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+            ]}
+          >
+            <Text style={styles.helloText}>Welcome Back</Text>
+            <Text style={styles.loginSubtitle}>
+              Sign in to access barangay services and manage your requests securely.
+            </Text>
+
             <View style={styles.fieldDivider} />
 
             <View style={styles.fieldGroup}>
               <Text style={styles.fieldLabel}>Email Address</Text>
               <View style={[styles.inputWrapper, emailFocused && styles.inputWrapperFocused]}>
-                <Mail size={17} color={emailFocused ? '#0038A8' : '#A0ABBC'} strokeWidth={1.8} />
+                <Mail size={18} color={emailFocused ? NAVY : '#A0ABBC'} strokeWidth={1.8} />
                 <TextInput
                   style={styles.input}
                   placeholder="e.g. juan@email.com"
-                  placeholderTextColor="#B0B8D0"
+                  placeholderTextColor="#A0ABBC"
                   value={email}
                   onChangeText={setEmail}
                   autoCapitalize="none"
@@ -185,11 +231,11 @@ export default function LoginScreen({ navigation }) {
             <View style={styles.fieldGroup}>
               <Text style={styles.fieldLabel}>Password</Text>
               <View style={[styles.inputWrapper, passwordFocused && styles.inputWrapperFocused]}>
-                <Lock size={17} color={passwordFocused ? '#0038A8' : '#A0ABBC'} strokeWidth={1.8} />
+                <Lock size={18} color={passwordFocused ? NAVY : '#A0ABBC'} strokeWidth={1.8} />
                 <TextInput
                   style={styles.input}
                   placeholder="Enter your password"
-                  placeholderTextColor="#B0B8D0"
+                  placeholderTextColor="#A0ABBC"
                   secureTextEntry={!showPassword}
                   value={password}
                   onChangeText={setPassword}
@@ -197,21 +243,27 @@ export default function LoginScreen({ navigation }) {
                   onBlur={() => setPasswordFocused(false)}
                   editable={!isLoading}
                 />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
-                  {showPassword ? <EyeOff size={17} color="#0038A8" /> : <Eye size={17} color="#A0ABBC" />}
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeBtn}
+                >
+                  {showPassword
+                    ? <EyeOff size={18} color={NAVY} />
+                    : <Eye size={18} color="#A0ABBC" />}
                 </TouchableOpacity>
               </View>
             </View>
 
-            <TouchableOpacity 
-              style={[styles.loginButton, isLoading && styles.buttonLoading]} 
-              onPress={handleLogin} 
+            <TouchableOpacity
+              style={[styles.loginButton, isLoading && styles.buttonLoading]}
+              onPress={handleLogin}
               disabled={isLoading}
+              activeOpacity={0.8}
             >
               {isLoading ? (
-                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-                <EGovSpinner size={36} />
-              </View>
+                <View style={styles.spinnerWrapper}>
+                  <EGovSpinner size={36} />
+                </View>
               ) : (
                 <View style={styles.buttonContent}>
                   <Text style={styles.buttonText}>Login</Text>
@@ -220,17 +272,27 @@ export default function LoginScreen({ navigation }) {
               )}
             </TouchableOpacity>
 
+            <View style={styles.privacyRow}>
+              <ShieldCheck size={14} color="#8892AA" strokeWidth={1.8} />
+              <Text style={styles.privacyText}>
+                Your information is encrypted and secured.
+              </Text>
+            </View>
+
             <View style={styles.orRow}>
-              <View style={styles.orLine} /><Text style={styles.orText}>or</Text><View style={styles.orLine} />
+              <View style={styles.orLine} />
+              <Text style={styles.orText}>or</Text>
+              <View style={styles.orLine} />
             </View>
 
             <Text style={styles.signupPrompt}>Don't have an account yet?</Text>
-            <TouchableOpacity 
-              style={styles.signupButton} 
+            <TouchableOpacity
+              style={styles.signupButton}
               onPress={() => navigation.navigate('SignUp')}
               disabled={isLoading}
+              activeOpacity={0.7}
             >
-              <Text style={styles.signupButtonText}>Create new account</Text>
+              <Text style={styles.signupButtonText}>Create New Account</Text>
             </TouchableOpacity>
           </Animated.View>
 
@@ -241,36 +303,39 @@ export default function LoginScreen({ navigation }) {
   );
 }
 
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
-const NAVY        = '#0038A8';
+const NAVY = '#0038A8';
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F7F9FC', // Matched with DecisionScreen
   },
   content: {
     flexGrow: 1,
-    paddingBottom: 40,
-    backgroundColor: '#FFFFFF',
+    paddingBottom: 36,
   },
-
-  // ── Logo block ────────────────────────────────────
+   headerArea: {
+    height: 220,           
+    position: 'relative',
+    overflow: 'hidden',
+  },
   logoBlock: {
     alignItems: 'center',
-    paddingTop: 40,
-    paddingBottom: 32,
-    backgroundColor: '#FFFFFF',
+    paddingTop: 38,
   },
   iconLogoWrapper: {
-    width: 80,
+    width: 80,             
     height: 80,
-    borderRadius: 40,
+    borderRadius: 24, // Matches the Squircle design language of DecisionScreen
     overflow: 'hidden',
-    marginBottom: 14,
+    marginBottom: 12,
     borderWidth: 2,
-    borderColor: '#E4E9F2',
+    borderColor: 'rgba(255,255,255,0.4)',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
   },
   iconLogo: {
     width: '100%',
@@ -279,64 +344,67 @@ const styles = StyleSheet.create({
   appName: {
     fontSize: 22,
     fontWeight: '800',
-    color: NAVY,
-    letterSpacing: 0.2,
+    color: '#FFFFFF',
+    letterSpacing: 0.4,
   },
-  appTagline: {
-    fontSize: 12,
-    color: '#8892AA',
-    marginTop: 3,
-    letterSpacing: 0.3,
-  },
-
-  // ── Form block ────────────────────────────────────
-  formBlock: {
-    marginHorizontal: 24,
+  card: {
+    marginHorizontal: 20,
+    marginTop: -40,        
     backgroundColor: '#FFFFFF',
+    borderRadius: 24, // Softer corners
+    paddingHorizontal: 24,
+    paddingTop: 32, // Adjusted since accent is removed
+    paddingBottom: 28,
+    borderWidth: 1,
+    borderColor: '#E4E8F1',
+    shadowColor: NAVY,
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
   },
   helloText: {
     fontSize: 26,
     fontWeight: '800',
     color: '#1A1F36',
-    letterSpacing: -0.3,
+    letterSpacing: -0.5,
     marginBottom: 6,
   },
   loginSubtitle: {
-    fontSize: 13,
-    color: '#8892AA',
-    lineHeight: 19,
+    fontSize: 14,
+    color: '#6B7A99', // Deeper, cooler grey
+    lineHeight: 22,
   },
   fieldDivider: {
     height: 1,
-    backgroundColor: '#E8EBF2',
+    backgroundColor: '#EDF1F7',
     marginVertical: 24,
   },
-
-  // ── Fields ───────────────────────────────────────
   fieldGroup: {
     marginBottom: 16,
   },
   fieldLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     color: '#4A5270',
-    marginBottom: 7,
-    letterSpacing: 0.2,
+    marginBottom: 8,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F2F4F8',
+    backgroundColor: '#F7F9FC', // Softer inactive background
     borderWidth: 1.5,
-    borderColor: '#E0E4EF',
-    borderRadius: 8,
+    borderColor: '#E4E8F1',
+    borderRadius: 12, // Softer corners
     paddingHorizontal: 14,
-    height: 52,
-    gap: 10,
+    height: 54,
+    gap: 12,
   },
   inputWrapperFocused: {
     borderColor: NAVY,
-    backgroundColor: '#F5F8FF',
+    backgroundColor: '#F0F5FF',
   },
   input: {
     flex: 1,
@@ -348,20 +416,18 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
     paddingVertical: 6,
   },
-
-  // ── Login button ──────────────────────────────────
   loginButton: {
     backgroundColor: NAVY,
-    borderRadius: 8,
-    marginTop: 8,
+    borderRadius: 12, // Softer corners
+    marginTop: 12,
     height: 54,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
+    shadowColor: NAVY,
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
   buttonLoading: {
     backgroundColor: '#FFFFFF',
@@ -369,6 +435,11 @@ const styles = StyleSheet.create({
     borderColor: '#E0E4EF',
     elevation: 0,
     shadowOpacity: 0,
+  },
+  spinnerWrapper: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   buttonContent: {
     flexDirection: 'row',
@@ -381,39 +452,49 @@ const styles = StyleSheet.create({
     fontSize: 16,
     letterSpacing: 0.5,
   },
-
-  // ── Or divider ────────────────────────────────────
+  privacyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+    gap: 6,
+  },
+  privacyText: {
+    fontSize: 12,
+    color: '#8892AA',
+    letterSpacing: 0.2,
+  },
   orRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 22,
+    marginVertical: 24,
     gap: 12,
   },
   orLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E8EBF2',
+    backgroundColor: '#EDF1F7',
   },
   orText: {
-    fontSize: 13,
-    color: '#B0B8D0',
-    fontWeight: '500',
+    fontSize: 12,
+    color: '#8892AA',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-
-  // ── Sign up ───────────────────────────────────────
   signupPrompt: {
     textAlign: 'center',
-    color: '#8892AA',
-    fontSize: 13,
+    color: '#6B7A99',
+    fontSize: 14,
     marginBottom: 12,
   },
   signupButton: {
     alignItems: 'center',
     paddingVertical: 14,
-    borderRadius: 8,
+    borderRadius: 12, // Softer corners
     borderWidth: 1.5,
     borderColor: NAVY,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F7F9FC', // Removed deep blue tint from background for contrast
   },
   signupButtonText: {
     color: NAVY,
@@ -421,18 +502,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     letterSpacing: 0.2,
   },
-
-  // ── Footer ───────────────────────────────────────
   footerNote: {
     textAlign: 'center',
-    color: '#C0C6D8',
-    fontSize: 11,
-    paddingTop: 32,
+    color: '#A0ABBC',
+    fontSize: 12,
+    paddingTop: 28,
     paddingBottom: 8,
-  },
-  topStripe: {
-    height: 6,
-    backgroundColor: '#1a73e8', // match your brand color
-    width: '100%',
   },
 });

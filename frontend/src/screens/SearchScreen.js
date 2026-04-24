@@ -174,7 +174,10 @@ export default function SearchScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F5F6FA' },
+  container: {
+    flex: 1,
+    backgroundColor: '#F5F6FA',
+  },
 
   // Header
   header: {
@@ -197,44 +200,137 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 9,
   },
-  searchIcon: { fontSize: 14, marginRight: 8 },
-  input:      { flex: 1, fontSize: 15, color: '#333', paddingVertical: 0 },
-  clearBtn:   { paddingLeft: 8 },
-  clearText:  { color: '#BBB', fontSize: 13, fontWeight: '600' },
-  cancelBtn:  { paddingVertical: 6 },
-  cancelText: { color: '#0047AB', fontWeight: '700', fontSize: 15 },
+  searchIcon: {
+    fontSize: 14,
+    marginRight: 8,
+  },
+  input: {
+    flex: 1,
+    fontSize: 15,
+    color: '#333',
+    paddingVertical: 0,
+  },
+  clearBtn: {
+    paddingLeft: 8,
+  },
+  clearText: {
+    color: '#BBB',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  cancelBtn: {
+    paddingVertical: 6,
+  },
+  cancelText: {
+    color: '#0047AB',
+    fontWeight: '700',
+    fontSize: 15,
+  },
 
   // Empty states
   emptyState: {
-    flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 60,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBottom: 60,
   },
-  emptyIcon:     { fontSize: 40, marginBottom: 16 },
-  emptyTitle:    { fontSize: 18, fontWeight: '700', color: '#333', marginBottom: 6 },
-  emptySubtitle: { fontSize: 14, color: '#AAA', textAlign: 'center', paddingHorizontal: 40 },
+  emptyIcon: {
+    fontSize: 40,
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#333',
+    marginBottom: 6,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#AAA',
+    textAlign: 'center',
+    paddingHorizontal: 40,
+  },
 
   countText: {
-    paddingHorizontal: 20, paddingTop: 12, paddingBottom: 4,
-    color: '#AAA', fontSize: 12,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 4,
+    color: '#AAA',
+    fontSize: 12,
   },
-  list: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 24 },
+  list: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 24,
+  },
 
   // Card
   card: {
-    backgroundColor: '#FFF', borderRadius: 14, padding: 16,
-    marginBottom: 10, elevation: 1,
-    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4,
+    backgroundColor: '#FFF',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 10,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
   },
-  cardTop:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 },
-  cardName:   { fontSize: 16, fontWeight: '700', color: '#1A1A2E' },
-  highlight:  { color: '#0047AB', backgroundColor: '#EEF3FF' },
-  cardSub:    { fontSize: 13, color: '#777', marginBottom: 5 },
-  cardBottom: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 },
-  cardTime:   { fontSize: 12, color: '#BBB' },
+  cardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  cardName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1A1A2E',
+  },
+  highlight: {
+    color: '#0047AB',
+    backgroundColor: '#EEF3FF',
+  },
+  cardSub: {
+    fontSize: 13,
+    color: '#777',
+    marginBottom: 5,
+  },
+  cardBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  cardTime: {
+    fontSize: 12,
+    color: '#BBB',
+  },
 
-  statusBadge:   { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, gap: 5 },
-  statusDot:     { width: 6, height: 6, borderRadius: 3 },
-  statusText:    { fontSize: 12, fontWeight: '700' },
-  priorityBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
-  priorityText:  { fontSize: 12, fontWeight: '700' },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 5,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  priorityBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  priorityText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
 });

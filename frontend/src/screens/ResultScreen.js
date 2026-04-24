@@ -1,7 +1,7 @@
 import React, { useRef, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  SafeAreaView, Alert, Platform, StatusBar, Image, Animated,
+  SafeAreaView, Alert, Platform, StatusBar, Image, Animated, ScrollView
 } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import {
@@ -9,10 +9,11 @@ import {
   MapPin,
   FileText,
   ChevronRight,
+  RotateCcw,
 } from 'lucide-react-native';
 import { supabase } from '../services/supabase';
 
-// ─── PRIORITY CONFIG — no emojis ─────────────────────────────
+// ─── PRIORITY CONFIG ─────────────────────────────────────────
 const PRIORITY_CONFIG = {
   HIGH:   { color: '#B71C1C', bg: '#FDECEA', border: '#EF9A9A', label: 'High Priority'   },
   MEDIUM: { color: '#C35A00', bg: '#FFF3E0', border: '#FFB347', label: 'Medium Priority' },
@@ -20,9 +21,9 @@ const PRIORITY_CONFIG = {
 };
 
 const ACTION_LABELS = {
-  SCHEDULE:      'Book an Appointment',
-  WALK_IN:       'Proceed to Barangay Hall',
-  SUBMIT_REPORT: 'Submit Report',
+  SCHEDULE:          'Book an Appointment',
+  WALK_IN:           'Proceed to Barangay Hall',
+  SUBMIT_REPORT:     'Submit Report',
   COMPLAINT_OPTIONS: 'Report and Make Appointment',
 };
 
@@ -91,6 +92,17 @@ export default function ResultScreen({ route, navigation }) {
   const { result, category, subType, urgency, description } = route.params;
   const config = PRIORITY_CONFIG[result.priority];
 
+  // Entrance Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
+    ]).start();
+  }, []);
+
   const handleSchedule = () => {
     navigation.navigate('BookAppointment', { result, category, subType, urgency, description });
   };
@@ -128,7 +140,7 @@ export default function ResultScreen({ route, navigation }) {
 
   const handleMakeReportOnly = async () => {
     try {
-      const { data: {session} } = await supabase.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       if (!session) { Alert.alert('Error', 'You must be logged in.'); return; }
       const { error } = await supabase.from('requests').insert({
         user_id: session.user.id,
@@ -157,372 +169,397 @@ export default function ResultScreen({ route, navigation }) {
       Alert.alert('Error', 'Failed to submit report. Please try again.')
     }
   };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#0038A8" barStyle="light-content" />
 
-      {/* ── Solid Navy header — no stripes, no gold ── */}
+      {/* ── Header ── */}
       <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Decision')}
-            style={styles.backBtn}
-            activeOpacity={0.8}
-          >
-            <ArrowLeft size={18} color="#FFFFFF" strokeWidth={2} />
-          </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerLabel}>ASSESSMENT</Text>
+          <Text style={styles.headerTitle}>Service Result</Text>
+        </View>
 
-          <HeaderLogo />
-
-          <View style={styles.headerTextBlock}>
-            <Text style={styles.headerTitle}>Service Result</Text>
-            <Text style={styles.headerSub}>Assessment summary</Text>
+        <View style={styles.headerRight}>
+          <View style={[styles.priorityPill, { backgroundColor: config.bg, borderColor: config.border }]}>
+            <View style={[styles.priorityDot, { backgroundColor: config.color }]} />
+            <Text style={[styles.priorityPillText, { color: config.color }]}>
+              {result.priority}
+            </Text>
           </View>
         </View>
       </View>
 
       {/* ── Body ── */}
-      <View style={styles.content}>
-
-        {/* Category label + title */}
-        <View style={styles.titleBlock}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
           <Text style={styles.categoryLabel}>{category}</Text>
           <Text style={styles.title}>Service Assessment</Text>
-        </View>
 
-        {/* Priority badge — no emoji, lucide-style dot */}
-        <View style={[styles.priorityBadge, { backgroundColor: config.bg, borderColor: config.border }]}>
-          <View style={[styles.priorityDot, { backgroundColor: config.color }]} />
-          <Text style={[styles.priorityText, { color: config.color }]}>{config.label}</Text>
-        </View>
-
-        {/* Facility row — MapPin icon replaces 📍 emoji */}
-        <View style={styles.facilityRow}>
-          <View style={styles.facilityIconBox}>
-            <MapPin size={15} color="#0038A8" strokeWidth={2} />
+          {/* ── Facility card ── */}
+          <View style={styles.facilityCard}>
+            <View style={styles.facilityIconBox}>
+              <MapPin size={20} color="#0038A8" strokeWidth={2} />
+            </View>
+            <View style={styles.facilityTextBlock}>
+              <Text style={styles.metaLabel}>Assigned Facility</Text>
+              <Text style={styles.facilityName}>{result.facility}</Text>
+            </View>
           </View>
-          <Text style={styles.facilityText}>{result.facility}</Text>
-        </View>
 
-        {/* Instructions card — no gold accent, clean border */}
-        <View style={styles.instructionsCard}>
-          <View style={styles.instructionsHeadingRow}>
-            <FileText size={13} color="#9AA0B5" strokeWidth={2} />
-            <Text style={styles.instructionsHeading}>What to do</Text>
+          {/* ── Instructions card ── */}
+          <View style={styles.instructionsCard}>
+            <View style={styles.instructionsHeadingRow}>
+              <View style={styles.instructionsIconBox}>
+                <FileText size={18} color="#0038A8" strokeWidth={2} />
+              </View>
+              <Text style={styles.instructionsHeading}>What To Do</Text>
+            </View>
+            <Text style={styles.instructionsText}>{result.instructions}</Text>
           </View>
-          <Text style={styles.instructionsText}>{result.instructions}</Text>
-        </View>
 
-        {/* SCHEDULE — Documents & Medical */}
-      {result.action === 'SCHEDULE' && (
-        <>
-          <TouchableOpacity
-            style={styles.actionBtn}
-            onPress={handleSchedule}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.actionBtnText}>Book an Appointment</Text>
-            <ChevronRight size={18} color="#FFFFFF" strokeWidth={2.5} />
-          </TouchableOpacity>
+          {/* ── Action Buttons ── */}
+          <View style={styles.actionContainer}>
+            {result.action === 'SCHEDULE' && (
+              <TouchableOpacity style={styles.actionBtn} onPress={handleSchedule} activeOpacity={0.85}>
+                <Text style={styles.actionBtnText}>Book an Appointment</Text>
+                <ChevronRight size={20} color="#FFFFFF" strokeWidth={2.5} />
+              </TouchableOpacity>
+            )}
 
-          <TouchableOpacity
-            style={styles.secondaryBtn}
-            onPress={() => navigation.navigate('Decision')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.secondaryBtnText}>Start Over</Text>
-          </TouchableOpacity>
-        </>
-      )}
+            {result.action === 'WALK_IN' && (
+              <TouchableOpacity style={styles.actionBtn} onPress={() => navigation.navigate('Decision')} activeOpacity={0.85}>
+                <Text style={styles.actionBtnText}>Proceed to Barangay Hall</Text>
+                <ChevronRight size={20} color="#FFFFFF" strokeWidth={2.5} />
+              </TouchableOpacity>
+            )}
 
-      {/* WALK_IN */}
-      {result.action === 'WALK_IN' && (
-        <>
-          <TouchableOpacity
-            style={styles.actionBtn}
-            onPress={() => navigation.navigate('Decision')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.actionBtnText}>Proceed to Barangay Hall</Text>
-            <ChevronRight size={18} color="#FFFFFF" strokeWidth={2.5} />
-          </TouchableOpacity>
+            {result.action === 'SUBMIT_REPORT' && (
+              <TouchableOpacity style={styles.actionBtn} onPress={handleSubmitReport} activeOpacity={0.85}>
+                <Text style={styles.actionBtnText}>Submit Report</Text>
+                <ChevronRight size={20} color="#FFFFFF" strokeWidth={2.5} />
+              </TouchableOpacity>
+            )}
 
-          <TouchableOpacity
-            style={styles.secondaryBtn}
-            onPress={() => navigation.navigate('Decision')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.secondaryBtnText}>Start Over</Text>
-          </TouchableOpacity>
-        </>
-      )}
+            {result.action === 'COMPLAINT_OPTIONS' && (
+              <>
+                <TouchableOpacity style={styles.actionBtn} onPress={handleSchedule} activeOpacity={0.85}>
+                  <Text style={styles.actionBtnText}>Report and Make Appointment</Text>
+                  <ChevronRight size={20} color="#FFFFFF" strokeWidth={2.5} />
+                </TouchableOpacity>
 
-      {/* SUBMIT_REPORT — Noise, Infrastructure */}
-      {result.action === 'SUBMIT_REPORT' && (
-        <>
-          <TouchableOpacity
-            style={styles.actionBtn}
-            onPress={handleSubmitReport}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.actionBtnText}>Submit Report</Text>
-            <ChevronRight size={18} color="#FFFFFF" strokeWidth={2.5} />
-          </TouchableOpacity>
+                <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSecondary]} onPress={handleMakeReportOnly} activeOpacity={0.85}>
+                  <Text style={styles.actionBtnTextSecondary}>Report Only</Text>
+                  <ChevronRight size={20} color="#1A1F36" strokeWidth={2.5} />
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
 
-          <TouchableOpacity
-            style={styles.secondaryBtn}
-            onPress={() => navigation.navigate('Decision')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.secondaryBtnText}>Start Over</Text>
-          </TouchableOpacity>
-        </>
-      )}
+        <View style={styles.privacyContainer}>
+            <Text style={styles.privacyText}>
+              Your data is processed securely under the Data Privacy Act of 2012. Information is only shared with authorized barangay personnel.
+            </Text>
+          </View>
 
-      {/* COMPLAINT_OPTIONS — Domestic, Physical Threat, Property Dispute, Other */}
-      {result.action === 'COMPLAINT_OPTIONS' && (
-        <>
-          <TouchableOpacity
-            style={styles.actionBtn}
-            onPress={handleSchedule}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.actionBtnText}>Report and Make Appointment</Text>
-            <ChevronRight size={18} color="#FFFFFF" strokeWidth={2.5} />
-          </TouchableOpacity>
+          <Text style={styles.footerNote}>KomuniServe v1.0.0</Text>
+        </Animated.View>
+      </ScrollView>
 
-          <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: '#455A64', marginTop: 10 }]}
-            onPress={handleSubmitReport}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.actionBtnText}>Report Only</Text>
-            <ChevronRight size={18} color="#FFFFFF" strokeWidth={2.5} />
-          </TouchableOpacity>
+      {/* ── Floating Tab Bar (Pantay na at walang overlap) ── */}
+      <View style={styles.floatingTabBar}>
+        <TouchableOpacity 
+          style={styles.tabItem}
+          onPress={() => navigation.navigate('Decision')}
+          activeOpacity={0.7}
+        >
+          <ArrowLeft size={22} color="#6B7A99" />
+          <Text style={styles.tabLabel}>Back</Text>
+        </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.secondaryBtn}
-            onPress={() => navigation.navigate('Decision')}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.secondaryBtnText}>Start Over</Text>
-          </TouchableOpacity>
-        </>
-      )}
+        <TouchableOpacity 
+          style={styles.tabItemMain} 
+          onPress={() => navigation.navigate('Decision')}
+          activeOpacity={0.8}
+        >
+          <View style={styles.mainTabInner}>
+            {/* Pinaliit ng konti ang icon para bumagay sa maliit na circle */}
+            <RotateCcw size={18} color="#FFFFFF" strokeWidth={2.5} />
+          </View>
+          <Text style={styles.tabLabelActive}>Start Over</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
 }
 
 // ─── STYLES ──────────────────────────────────────────────────
+const NAVY = '#0038A8';
+const BACKGROUND = '#F7F9FC'; // Updated to match other screens
+const WHITE = '#FFFFFF';
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F4F8',
+    backgroundColor: BACKGROUND,
   },
-
-  // ── Header — solid Navy, NO stripe, NO gold ──
   header: {
-    backgroundColor: '#0038A8',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.18,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-  },
-  headerContent: {
+    backgroundColor: NAVY,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) + 10 : 10,
-    paddingBottom: 14,
-    gap: 12,
-  },
-  backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 9,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerLogoCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.5)',
-    overflow: 'hidden',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerLogoImage: {
-    width: 38,
-    height: 38,
-  },
-  headerTextBlock: { flex: 1 },
-  headerTitle: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '700',
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-    letterSpacing: 0.2,
-  },
-  headerSub: {
-    color: '#A8C0F0',
-    fontSize: 11,
-    marginTop: 1,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-  },
-
-  // ── Body ──
-  content: {
-    flex: 1,
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 28,
-    paddingBottom: 24,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) + 12 : 12,
+    paddingBottom: 20,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
   },
-
-  // Title block
-  titleBlock: {
-    marginBottom: 20,
+  headerCenter: {
+    alignItems: 'flex-start',
+    flex: 1,
   },
-  categoryLabel: {
+  headerLabel: {
+    color: 'rgba(255,255,255,0.8)',
     fontSize: 10,
     fontWeight: '700',
-    color: '#9AA0B5',
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
-    letterSpacing: 1.5,
-    marginBottom: 6,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
-  title: {
-    fontSize: 26,
+  headerTitle: {
+    color: WHITE,
+    fontSize: 18,
     fontWeight: '800',
-    color: '#1A1F36',
-    letterSpacing: -0.3,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    marginTop: 2,
   },
-
-  // Priority badge — no emoji, dot indicator
-  priorityBadge: {
+  headerRight: {
+    minWidth: 60,
+    alignItems: 'flex-end',
+  },
+  priorityPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
     borderWidth: 1,
-    marginBottom: 20,
-    gap: 8,
   },
   priorityDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
   },
-  priorityText: {
+  priorityPillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 120, // Space for Floating Tab Bar
+  },
+  categoryLabel: {
+    fontSize: 12,
     fontWeight: '700',
-    fontSize: 13,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    color: '#4A5270',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 6,
   },
-
-  // Facility row — MapPin icon
-  facilityRow: {
+  title: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#1A1F36',
+    letterSpacing: -0.5,
+    marginBottom: 24,
+  },
+  facilityCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
-    gap: 10,
-  },
-  facilityIconBox: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
-    backgroundColor: '#E8EFFD',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#C5D5F5',
-  },
-  facilityText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#2C3250',
-    fontWeight: '600',
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
-  },
-
-  // Instructions card — clean, no gold accent
-  instructionsCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 18,
-    marginBottom: 28,
-    borderWidth: 1,
-    borderColor: '#E8EBF2',
-    elevation: 1,
+    backgroundColor: WHITE,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: '#E4E8F1',
     shadowColor: '#000',
     shadowOpacity: 0.04,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  facilityIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#F0F5FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  facilityTextBlock: {
+    flex: 1,
+  },
+  metaLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#6B7A99',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  facilityName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1A1F36',
+  },
+  instructionsCard: {
+    backgroundColor: WHITE,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    borderWidth: 1.5,
+    borderColor: '#E4E8F1',
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   instructionsHeadingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 10,
+    marginBottom: 14,
+  },
+  instructionsIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#F0F5FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   instructionsHeading: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#9AA0B5',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1A1F36',
   },
   instructionsText: {
     fontSize: 15,
-    color: '#2C3250',
+    color: '#4A5270',
     lineHeight: 24,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
   },
-
-  // Primary action button — Navy, no gold
+  actionContainer: {
+    gap: 12,
+  },
   actionBtn: {
     flexDirection: 'row',
-    backgroundColor: '#0038A8',
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: NAVY,
+    height: 56,
+    borderRadius: 12, // Updated to match other screens
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
     gap: 8,
-    elevation: 3,
-    shadowColor: '#0038A8',
+    elevation: 4,
+    shadowColor: NAVY,
     shadowOpacity: 0.25,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  actionBtnSecondary: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#E4E8F1',
+    shadowOpacity: 0,
+    elevation: 0,
   },
   actionBtnText: {
-    color: '#FFFFFF',
+    color: WHITE,
     fontWeight: '700',
     fontSize: 16,
-    letterSpacing: 0.2,
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+    letterSpacing: 0.5,
   },
-
-  // Secondary button
-  secondaryBtn: {
+  actionBtnTextSecondary: {
+    color: '#1A1F36',
+    fontWeight: '700',
+    fontSize: 16,
+    letterSpacing: 0.5,
+  },
+  privacyContainer: {
+    marginTop: 32,
+    paddingHorizontal: 8,
+  },
+  privacyText: {
+    fontSize: 12,
+    color: '#6B7A99',
+    textAlign: 'justify', // Pinalitan from 'center' to 'justify'
+    lineHeight: 18,
+  },
+  footerNote: {
+    textAlign: 'center',
+    color: '#A0ABBC',
+    fontSize: 11,
+    marginTop: 20,
+    fontWeight: '600',
+  },
+  floatingTabBar: {
+    position: 'absolute',
+    bottom: 30,
+    left: 24,
+    right: 24,
+    height: 70,
+    backgroundColor: WHITE,
+    borderRadius: 35,
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
+    justifyContent: 'space-around', 
+    elevation: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    paddingHorizontal: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.04)',
   },
-  secondaryBtnText: {
-    color: '#9AA0B5',
-    fontSize: 14,
-    fontWeight: '500',
-    fontFamily: Platform.OS === 'ios' ? 'Helvetica Neue' : 'Roboto',
+  tabItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  tabItemMain: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  mainTabInner: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: NAVY,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  tabLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#6B7A99',
+    marginTop: 4,
+  },
+  tabLabelActive: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: NAVY,
   },
 });

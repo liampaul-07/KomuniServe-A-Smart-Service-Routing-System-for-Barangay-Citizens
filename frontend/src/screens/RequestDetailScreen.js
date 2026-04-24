@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
-  Alert, ScrollView, Platform, StatusBar, Image, TextInput
+  Alert, ScrollView, Platform, StatusBar, Image, TextInput, KeyboardAvoidingView
 } from 'react-native';
 import {
   ChevronLeft,
@@ -168,6 +169,7 @@ export default function RequestDetailScreen({ route, navigation }) {
       console.log('Notification insert failed:', e.message);
     }
   };
+
   const handleApprove = () => {
     Alert.alert('Approve Request', `Approve ${request.userName}'s request?`, [
       { text: 'Cancel', style: 'cancel' },
@@ -208,7 +210,7 @@ export default function RequestDetailScreen({ route, navigation }) {
             // Notification
             const notifTitle   = 'Appointment Approved';
             const notifMessage = staffNotes.trim()
-              ? `Your appointment for ${request.category} has been approved. Note from staff: ${staffNotes.trim()}`
+              ? `Your appointment for ${request.category} has been approved.\nNote from staff: ${staffNotes.trim()}`
               : `Your appointment for ${request.category} has been approved.`;
 
             await insertNotification(request.user_id, notifTitle, notifMessage, 'Approved');
@@ -262,7 +264,7 @@ export default function RequestDetailScreen({ route, navigation }) {
             // Notification
             const notifTitle   = 'Appointment Rejected';
             const notifMessage = staffNotes.trim()
-              ? `Your appointment for ${request.category} has been rejected. Reason: ${staffNotes.trim()}`
+              ? `Your appointment for ${request.category} has been rejected.\nReason: ${staffNotes.trim()}`
               : `Your appointment for ${request.category} has been rejected.`;
 
             await insertNotification(request.user_id, notifTitle, notifMessage, 'Rejected');
@@ -304,7 +306,7 @@ export default function RequestDetailScreen({ route, navigation }) {
           <Text style={styles.backBtnText}>Back</Text>
         </TouchableOpacity>
 
-        {/* ✅ IconLogo.jpeg — perfect circle, white bg, subtle border */}
+        {/* IconLogo.jpeg — perfect circle, white bg, subtle border */}
         <View style={styles.headerLogoWrapper}>
           <Image
             source={require('../../assets/IconLogo.jpeg')}
@@ -316,170 +318,175 @@ export default function RequestDetailScreen({ route, navigation }) {
         <View style={{ width: 64 }} />
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView 
+        style={styles.keyboardAvoid} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
+        <ScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
 
-        {/* ── Page title below header (not inside it) ── */}
-        <Text style={styles.pageTitle}>Request Detail</Text>
+          {/* ── Page title below header (not inside it) ── */}
+          <Text style={styles.pageTitle}>Request Detail</Text>
 
-        {/* ── Resident identity block ── */}
-        <View style={styles.identityBlock}>
-          <View style={styles.avatarCircle}>
-            <User size={26} color="#0038A8" strokeWidth={1.8} />
-          </View>
-          <View style={styles.identityText}>
-            <Text style={styles.identityLabel}>RESIDENT</Text>
-            <Text style={styles.identityName}>{request.userName}</Text>
-          </View>
-        </View>
-
-        {/* ── Status + Priority badges ── */}
-        <View style={styles.badgeRow}>
-          <View style={[styles.badge, {
-            backgroundColor: statusColor.bg,
-            borderColor: statusColor.border,
-          }]}>
-            <StatusIcon size={13} color={statusColor.text} strokeWidth={2} />
-            <Text style={[styles.badgeText, { color: statusColor.text }]}>{status}</Text>
+          {/* ── Resident identity block ── */}
+          <View style={styles.identityBlock}>
+            <View style={styles.avatarCircle}>
+              <User size={26} color="#0038A8" strokeWidth={1.8} />
+            </View>
+            <View style={styles.identityText}>
+              <Text style={styles.identityLabel}>RESIDENT</Text>
+              <Text style={styles.identityName}>{request.userName}</Text>
+            </View>
           </View>
 
-          <View style={[styles.badge, {
-            backgroundColor: priority.bg,
-            borderColor: priority.color + '40',
-          }]}>
-            <PriorityIcon size={13} color={priority.color} strokeWidth={2} />
-            <Text style={[styles.badgeText, { color: priority.color }]}>{priority.label}</Text>
-          </View>
-        </View>
+          {/* ── Status + Priority badges ── */}
+          <View style={styles.badgeRow}>
+            <View style={[styles.badge, {
+              backgroundColor: statusColor.bg,
+              borderColor: statusColor.border,
+            }]}>
+              <StatusIcon size={13} color={statusColor.text} strokeWidth={2} />
+              <Text style={[styles.badgeText, { color: statusColor.text }]}>{status}</Text>
+            </View>
 
-        {/* ── Info card — gold 4px top accent ── */}
-        <Text style={styles.sectionLabelText}>REQUEST INFORMATION</Text>
-        <View style={styles.infoCard}>
-          {/* ✅ Gold 4px top accent stripe on card */}
-          <View style={styles.cardGoldAccent} />
-          <View style={styles.cardBody}>
-            <Row 
-              label="Category"  
-              value={request.category}                   
-              IconComponent={Tag}       
-            />
-            <Row 
-              label="Type"      
-              value={(fullRequestData?.intake_answers?.subType ?? fullRequestData?.service_requested ?? '').replace(/_/g, ' ')} 
-              IconComponent={Layers}    
-            />
-            <Row 
-              label="Facility"  
-              value={fullRequestData?.intake_answers?.facility ?? request.facility ?? ''}                   
-              IconComponent={Building2} 
-            />
-            <Row 
-              label="Action"    
-              value={request.action?.replace(/_/g, ' ') ?? ''}  
-              IconComponent={Zap}       
-            />
-            <Row 
-              label="Submitted" 
-              value={formatDate(request.timestamp)}       
-              IconComponent={Calendar}  
-            />
-            {appointment && (
-              <>
-                <Row
-                  label="Scheduled Date"
-                  value={new Date(appointment.scheduled_date).toLocaleDateString('en-PH', {
-                    weekday: 'long', month: 'long', day: 'numeric'
-                  })}
-                  IconComponent={Calendar}
-                />
-                <Row
-                  label="Scheduled Time"
-                  value={formatTimeForDisplay(appointment.scheduled_time)}
-                  IconComponent={Clock}
-                />
-              </>
-            )}
+            <View style={[styles.badge, {
+              backgroundColor: priority.bg,
+              borderColor: priority.color + '40',
+            }]}>
+              <PriorityIcon size={13} color={priority.color} strokeWidth={2} />
+              <Text style={[styles.badgeText, { color: priority.color }]}>{priority.label}</Text>
+            </View>
           </View>
-        </View>
 
-        {/* ── Description card — gold 4px top accent ── */}
-        {request.description !== '' && (
-          <>
-            <Text style={styles.sectionLabelText}>RESIDENT'S DESCRIPTION</Text>
-            <View style={styles.descCard}>
-              {/* ✅ Gold 4px top accent stripe on card */}
-              <View style={styles.cardGoldAccent} />
-              <View style={styles.cardBody}>
-                <MessageSquare size={16} color="#94A3B8" strokeWidth={1.8} style={{ marginBottom: 10 }} />
-                <Text style={styles.descText}>{request.description}</Text>
+          {/* ── Info card — gold 4px top accent ── */}
+          <Text style={styles.sectionLabelText}>REQUEST INFORMATION</Text>
+          <View style={styles.infoCard}>
+            {/* Gold 4px top accent stripe on card */}
+            <View style={styles.cardGoldAccent} />
+            <View style={styles.cardBody}>
+              <Row 
+                label="Category"  
+                value={request.category}                   
+                IconComponent={Tag}       
+              />
+              <Row 
+                label="Type"      
+                value={(fullRequestData?.intake_answers?.subType ?? fullRequestData?.service_requested ?? '').replace(/_/g, ' ')} 
+                IconComponent={Layers}    
+              />
+              <Row 
+                label="Facility"  
+                value={fullRequestData?.intake_answers?.facility ?? request.facility ?? ''}                   
+                IconComponent={Building2} 
+              />
+              <Row 
+                label="Action"    
+                value={request.action?.replace(/_/g, ' ') ?? ''}  
+                IconComponent={Zap}       
+              />
+              <Row 
+                label="Submitted" 
+                value={formatDate(request.timestamp)}       
+                IconComponent={Calendar}  
+              />
+              {appointment && (
+                <>
+                  <Row
+                    label="Scheduled Date"
+                    value={new Date(appointment.scheduled_date).toLocaleDateString('en-PH', {
+                      weekday: 'long', month: 'long', day: 'numeric'
+                    })}
+                    IconComponent={Calendar}
+                  />
+                  <Row
+                    label="Scheduled Time"
+                    value={formatTimeForDisplay(appointment.scheduled_time)}
+                    IconComponent={Clock}
+                  />
+                </>
+              )}
+            </View>
+          </View>
+
+          {/* ── Description card — gold 4px top accent ── */}
+          {request.description !== '' && (
+            <>
+              <Text style={styles.sectionLabelText}>RESIDENT'S DESCRIPTION</Text>
+              <View style={styles.descCard}>
+                {/* Gold 4px top accent stripe on card */}
+                <View style={styles.cardGoldAccent} />
+                <View style={styles.cardBody}>
+                  <MessageSquare size={16} color="#94A3B8" strokeWidth={1.8} style={{ marginBottom: 10, marginTop: 12 }} />
+                  <Text style={styles.descText}>{request.description}</Text>
+                </View>
               </View>
-            </View>
-          </>
-        )}
+            </>
+          )}
 
-        {/* ── Action buttons (Pending only) ── */}
-        {status === 'Pending' && (
-          <>
-            <Text style={styles.sectionLabelText}>ADMIN ACTION</Text>
+          {/* ── Action buttons (Pending only) ── */}
+          {status === 'Pending' && (
+            <>
+              <Text style={styles.sectionLabelText}>ADMIN ACTION</Text>
 
-            {/* Staff notes input */}
-            <View style={styles.notesCard}>
-              <View style={styles.cardGoldAccent} />
-              <View style={[styles.cardBody, { paddingTop: 14 }]}>
-                <Text style={styles.notesLabel}>Note to Resident (optional)</Text>
-                <TextInput
-                  style={styles.notesInput}
-                  placeholder="Add a reason, instructions, or remarks..."
-                  placeholderTextColor="#B0B8C9"
-                  multiline
-                  numberOfLines={3}
-                  value={staffNotes}
-                  onChangeText={setStaffNotes}
-                  textAlignVertical="top"
-                />
+              {/* Staff notes input */}
+              <View style={styles.notesCard}>
+                <View style={styles.cardGoldAccent} />
+                <View style={[styles.cardBody, { paddingTop: 14 }]}>
+                  <Text style={styles.notesLabel}>Note to Resident (optional)</Text>
+                  <TextInput
+                    style={styles.notesInput}
+                    placeholder="Add a reason, instructions, or remarks..."
+                    placeholderTextColor="#B0B8C9"
+                    multiline
+                    numberOfLines={3}
+                    value={staffNotes}
+                    onChangeText={setStaffNotes}
+                    textAlignVertical="top"
+                  />
+                </View>
               </View>
+
+              <View style={styles.actionRow}>
+                <TouchableOpacity
+                  style={styles.approveBtn}
+                  onPress={handleApprove}
+                  activeOpacity={0.82}
+                >
+                  <CheckCheck size={18} color="#FFFFFF" strokeWidth={2.2} />
+                  <Text style={styles.approveBtnText}>Approve</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.rejectBtn}
+                  onPress={handleReject}
+                  activeOpacity={0.82}
+                >
+                  <XCircle size={18} color="#B91C1C" strokeWidth={2.2} />
+                  <Text style={styles.rejectBtnText}>Reject</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+
+          {/* ── Resolved banner ── */}
+          {status !== 'Pending' && (
+            <View style={[styles.resolvedBanner, {
+              backgroundColor: statusColor.bg,
+              borderColor: statusColor.border,
+            }]}>
+              <StatusIcon size={18} color={statusColor.text} strokeWidth={2} />
+              <Text style={[styles.resolvedText, { color: statusColor.text }]}>
+                This request has been {status.toLowerCase()}.
+              </Text>
             </View>
+          )}
 
-            <View style={styles.actionRow}>
-              <TouchableOpacity
-                style={styles.approveBtn}
-                onPress={handleApprove}
-                activeOpacity={0.82}
-              >
-                <CheckCheck size={18} color="#FFFFFF" strokeWidth={2.2} />
-                <Text style={styles.approveBtnText}>Approve</Text>
-              </TouchableOpacity>
+          <Text style={styles.footerNote}>KomuniServe v1.0.0</Text>
 
-              <TouchableOpacity
-                style={styles.rejectBtn}
-                onPress={handleReject}
-                activeOpacity={0.82}
-              >
-                <XCircle size={18} color="#B91C1C" strokeWidth={2.2} />
-                <Text style={styles.rejectBtnText}>Reject</Text>
-              </TouchableOpacity>
-            </View>
-          </>
-        )}
-
-        {/* ── Resolved banner ── */}
-        {status !== 'Pending' && (
-          <View style={[styles.resolvedBanner, {
-            backgroundColor: statusColor.bg,
-            borderColor: statusColor.border,
-          }]}>
-            <StatusIcon size={18} color={statusColor.text} strokeWidth={2} />
-            <Text style={[styles.resolvedText, { color: statusColor.text }]}>
-              This request has been {status.toLowerCase()}.
-            </Text>
-          </View>
-        )}
-
-        <Text style={styles.footerNote}>KomuniServe v1.0.0</Text>
-
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -492,6 +499,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
+  },
+  keyboardAvoid: {
+    flex: 1,
   },
 
   // ── Header: solid Navy, NO gold stripe ──────────
@@ -523,7 +533,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-  // ✅ IconLogo — perfect circle, white bg, subtle border, NO placeholder text
+  // IconLogo — perfect circle, white bg, subtle border
   headerLogoWrapper: {
     width: 40,
     height: 40,
@@ -640,7 +650,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
 
-  // ✅ Gold 4px accent — top of card only, NOT on headers
+  // Gold 4px accent — top of card only, NOT on headers
   cardGoldAccent: {
     height: 4,
     backgroundColor: GOLD_STRIPE,
@@ -653,6 +663,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#334155',
     lineHeight: 22,
+    marginBottom: 16,
   },
 
   // ── Action buttons ───────────────────────────────
@@ -722,12 +733,12 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   notesCard: {
-  backgroundColor: '#FFFFFF',
-  borderRadius: 10,
-  marginBottom: 14,
-  borderWidth: 1,
-  borderColor: '#E2E8F0',
-  overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    overflow: 'hidden',
   },
   notesLabel: {
     fontSize: 12,
@@ -746,5 +757,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#334155',
     minHeight: 80,
+    marginBottom: 16,
   },
 });
